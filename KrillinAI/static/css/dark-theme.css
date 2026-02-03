@@ -1,0 +1,101 @@
+/* 
+ * Dark Theme for KrillinAI
+ * 深色主题 - 可选启用
+ * Usage: Add class "dark-theme" to <body> or <html> element
+ */
+
+.dark-theme {
+    --color-primary: #1690FF;
+    --color-bg-body: #020E19;
+    --color-bg-card: #232C38;
+    --color-bg-menu: #1C222D;
+    --color-bg-input: #151A23;
+    --color-bg-header: #151A23;
+
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #E8E9F5;
+    --color-text-tertiary: #B8C3D1;
+    --color-text-quaternary: #8599B1;
+
+    --color-border-base: #2E3A4B;
+    --color-border-light: #3A485D;
+
+    --color-error: #E34D59;
+    --color-warning: #EDA42F;
+    --color-success: #00A870;
+}
+
+/* Apply dark theme styles */
+.dark-theme body {
+    background: linear-gradient(120deg, #020E19 0%, #0A1628 100%);
+    color: var(--color-text-secondary);
+}
+
+.dark-theme .card {
+    background: rgba(35, 44, 56, 0.9);
+    border-color: var(--color-border-base);
+    box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.3);
+}
+
+.dark-theme .card-title {
+    color: var(--color-text-primary);
+}
+
+.dark-theme .form-input,
+.dark-theme .form-select {
+    background: var(--color-bg-input);
+    border-color: var(--color-border-base);
+    color: var(--color-text-primary);
+}
+
+.dark-theme .form-input:focus,
+.dark-theme .form-select:focus {
+    border-color: var(--color-primary);
+}
+
+.dark-theme .sidebar {
+    background: rgba(28, 34, 45, 0.95);
+    border-right: 1px solid var(--color-border-base);
+}
+
+.dark-theme .main-inner {
+    background: rgba(35, 44, 56, 0.95);
+}
+
+.dark-theme .status-bar {
+    background: rgba(21, 26, 35, 0.95);
+    color: var(--color-text-tertiary);
+    border-top: 1px solid var(--color-border-base);
+}
+
+.dark-theme .task-card {
+    background: var(--color-bg-card);
+    border-color: var(--color-border-base);
+}
+
+.dark-theme .task-title {
+    color: var(--color-text-primary);
+}
+
+.dark-theme .provider-card {
+    background: var(--color-bg-card);
+    border-color: var(--color-border-base);
+}
+
+.dark-theme .guide-content {
+    background: rgba(21, 26, 35, 0.8);
+    border-color: var(--color-border-base);
+}
+
+/* Scrollbar for dark theme */
+.dark-theme ::-webkit-scrollbar-track {
+    background: var(--color-bg-body);
+}
+
+.dark-theme ::-webkit-scrollbar-thumb {
+    background: var(--color-border-light);
+}
+
+.dark-theme ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-quaternary);
+}

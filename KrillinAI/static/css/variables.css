@@ -1,0 +1,94 @@
+:root {
+  /* ========================================================================
+     1. Color System (色彩体系)
+     ======================================================================== */
+
+  /* --- Brand Colors (主色调 - 蓝色系) --- */
+  --color-primary-1: #1690FF;  /* Core Brand Color */
+  --color-primary-2: #1482E6;
+  --color-primary-3: #1274CC;
+  --color-primary-4: #1066B3;
+  --color-primary-5: #0E5899;
+  --color-primary-6: #0C4A80;
+  --color-primary-7: #0A3C66;
+  --color-primary-8: #082E4D;
+  --color-primary-9: #061F33;
+  --color-primary-10: #020E19; /* Deepest Background */
+
+  /* --- Neutral Colors (中性色 - 文字 & 背景) --- */
+  /* Text */
+  --color-text-primary: #FFFFFF;    /* Level 1: Titles, Main Info */
+  --color-text-secondary: #E8E9F5;  /* Level 2: Body Text */
+  --color-text-tertiary: #B8C3D1;   /* Level 3: Secondary Info */
+  --color-text-quaternary: #8599B1; /* Level 4: Disabled, Placeholders */
+  --color-text-dark: #627288;       /* Level 5: Dark Text on Light (if any) */
+
+  /* Backgrounds */
+  --color-bg-body: #020E19;   /* Global Body Background */
+  --color-bg-card: #232C38;   /* Card / Container Background */
+  --color-bg-menu: #1C222D;   /* Menu / Dropdown / Popover Background */
+  --color-bg-header: #151A23; /* Table/Section Header Background */
+  --color-bg-input: #151A23;  /* Input Background */
+
+  /* Borders & Dividers */
+  --color-border-base: #2E3A4B;
+  --color-border-light: #3A485D;
+
+  /* --- Functional Colors (功能色) --- */
+  --color-error: #E34D59;
+  --color-warning: #EDA42F;
+  --color-success: #00A870;
+  --color-info: #1690FF;
+
+  /* ========================================================================
+     2. Typography (排版)
+     ======================================================================== */
+
+  --font-family-base: "PingFang SC", "Microsoft YaHei", "Helvetica", "Arial", sans-serif;
+  --font-family-mono: "Roboto", "SF Mono", monospace; /* Optimized for numbers */
+
+  /* Sizes */
+  --font-size-caption: 12px;
+  --font-size-body: 14px;
+  --font-size-title: 16px;
+  --font-size-h3: 20px;
+  --font-size-h2: 24px;
+  --font-size-h1: 36px;
+  --font-size-display: 48px;
+
+  /* Line Heights */
+  --line-height-base: 1.5;
+  --line-height-caption: 20px;
+  --line-height-body: 22px;
+
+  /* Weights */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* ========================================================================
+     3. Spacing (间距 - 4px Grid)
+     ======================================================================== */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* ========================================================================
+     4. Shadows (阴影)
+     ======================================================================== */
+  --shadow-basic: 0 1px 10px rgba(0, 0, 0, 0.2);       /* Components Hover */
+  --shadow-medium: 0 3px 14px rgba(0, 0, 0, 0.4);      /* Dropdowns */
+  --shadow-upper: 0 6px 30px rgba(0, 0, 0, 0.6);       /* Modals */
+
+  /* ========================================================================
+     5. Radius (圆角)
+     ======================================================================== */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+}

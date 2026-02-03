@@ -1,0 +1,20 @@
+# Exclude large directories from build context
+# Exclude large directories from build context
+tasks/
+models/
+data/
+bin/
+*.db
+
+# Exclude git and IDE files
+.git/
+.idea/
+.vscode/
+*.log
+
+# Exclude temporary and build artifacts
+*.exe
+KrillinAI*
+
+# Exclude test files
+*_test.go

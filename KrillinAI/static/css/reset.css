@@ -1,0 +1,7 @@
+/* Minimal Reset - Safe for integration */
+* {
+  box-sizing: border-box;
+}
+
+/* DO NOT set global background/color here to avoid conflicts */
+/* Inline styles in index.html will take precedence */
