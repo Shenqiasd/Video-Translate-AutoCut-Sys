@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/samber/lo"
+	"go.uber.org/zap"
 	"krillin-ai/internal/dto"
 	"krillin-ai/internal/storage"
 	"krillin-ai/internal/types"
@@ -14,8 +16,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"github.com/samber/lo"
-	"go.uber.org/zap"
 )
 
 func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.StartVideoSubtitleTaskResData, error) {
@@ -127,17 +127,17 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 	}
 
 	stepParam := &types.SubtitleTaskStepParam{
-		TaskId:             taskId,
-		TaskPtr:            taskPtr,
-		TaskBasePath:       taskBasePath,
-		Link:               req.Url,
-		AudioDownloadUrl:   req.AudioUrl, // Pass separate audio URL
-		SubtitleResultType: resultType,
-		EnableModalFilter:  req.ModalFilter == types.SubtitleTaskModalFilterYes,
-		EnableTts:          req.Tts == types.SubtitleTaskTtsYes,
-		TtsVoiceCode:       req.TtsVoiceCode,
-		VoiceCloneAudioUrl: voiceCloneAudioUrl,
-		ReplaceWordsMap:    replaceWordsMap,
+		TaskId:                  taskId,
+		TaskPtr:                 taskPtr,
+		TaskBasePath:            taskBasePath,
+		Link:                    req.Url,
+		AudioDownloadUrl:        req.AudioUrl, // Pass separate audio URL
+		SubtitleResultType:      resultType,
+		EnableModalFilter:       req.ModalFilter == types.SubtitleTaskModalFilterYes,
+		EnableTts:               req.Tts == types.SubtitleTaskTtsYes,
+		TtsVoiceCode:            req.TtsVoiceCode,
+		VoiceCloneAudioUrl:      voiceCloneAudioUrl,
+		ReplaceWordsMap:         replaceWordsMap,
 		OriginLanguage:          types.StandardLanguageCode(req.OriginLanguage),
 		TargetLanguage:          types.StandardLanguageCode(req.TargetLang),
 		UserUILanguage:          types.StandardLanguageCode(req.Language),
@@ -146,7 +146,7 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 		VerticalVideoMinorTitle: req.VerticalMinorTitle,
 		MaxWordOneLine:          12, // 默认值
 	}
-	log.GetLogger().Info("StartVideoSubtitleTask stepParam initialized", 
+	log.GetLogger().Info("StartVideoSubtitleTask stepParam initialized",
 		zap.Bool("EnableTts", stepParam.EnableTts),
 		zap.Any("SubtitleResultType", stepParam.SubtitleResultType),
 		zap.String("EmbedSubtitleVideoType", stepParam.EmbedSubtitleVideoType))
@@ -185,7 +185,7 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 		// 获取视频信息（标题、封面、简介总结）
 		stepParam.TaskPtr.StatusMsg = "正在分析视频信息 Analyzing Video Info..."
 		_ = storage.SaveTask(stepParam.TaskPtr)
-		
+
 		err = s.getVideoInfo(ctx, stepParam)
 		_ = storage.SaveTask(stepParam.TaskPtr)
 		if err != nil {
@@ -244,11 +244,6 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 		_ = storage.SaveTask(stepParam.TaskPtr)
 
 		err = s.uploadSubtitles(ctx, stepParam)
-		
-		stepParam.TaskPtr.Status = types.SubtitleTaskStatusSuccess // Mark Success explicit
-		stepParam.TaskPtr.StatusMsg = "任务完成 Completed"
-		_ = storage.SaveTask(stepParam.TaskPtr)                    // Final persist
-
 		if err != nil {
 			log.GetLogger().Error("StartVideoSubtitleTask uploadSubtitles err", zap.Any("req", req), zap.Error(err))
 			stepParam.TaskPtr.Status = types.SubtitleTaskStatusFailed
@@ -257,6 +252,10 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 			_ = storage.SaveTask(stepParam.TaskPtr)
 			return
 		}
+
+		stepParam.TaskPtr.Status = types.SubtitleTaskStatusSuccess
+		stepParam.TaskPtr.StatusMsg = "任务完成 Completed"
+		_ = storage.SaveTask(stepParam.TaskPtr)
 
 		log.GetLogger().Info("video subtitle task end", zap.String("taskId", taskId))
 	}()

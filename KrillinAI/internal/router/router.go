@@ -6,6 +6,7 @@ import (
 	"krillin-ai/static"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,12 +14,21 @@ import (
 func SetupRouter(r *gin.Engine) {
 	api := r.Group("/api")
 
+	// Lightweight health check for reverse proxies / uptime monitors.
+	// Avoids DB checks here to keep it dependency-free.
+	api.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"ok":   true,
+			"time": time.Now().UTC().Format(time.RFC3339),
+		})
+	})
+
 	hdl := handler.NewHandler()
 	{
 		api.POST("/capability/subtitleTask", hdl.StartSubtitleTask)
 		api.GET("/capability/subtitleTask", hdl.GetSubtitleTask)
-		api.GET("/capability/history", hdl.GetTaskHistory)      // New History API
-		api.DELETE("/capability/task/:taskId", hdl.DeleteTask)  // New Delete API
+		api.GET("/capability/history", hdl.GetTaskHistory)        // New History API
+		api.DELETE("/capability/task/:taskId", hdl.DeleteTask)    // New Delete API
 		api.POST("/capability/task/:taskId/retry", hdl.RetryTask) // Retry Failed Task
 		api.POST("/file", hdl.UploadFile)
 		api.GET("/file/*filepath", hdl.DownloadFile)

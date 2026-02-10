@@ -1,15 +1,16 @@
 package handler
 
 import (
+	"krillin-ai/internal/deps"
 	"krillin-ai/internal/dto"
 	"krillin-ai/internal/response"
 	"krillin-ai/internal/service"
-	"krillin-ai/internal/deps"
 	"krillin-ai/internal/storage"
 	"krillin-ai/log"
 	apperrors "krillin-ai/pkg/errors"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -87,8 +88,8 @@ func (h Handler) GetTaskHistory(c *gin.Context) {
 		})
 		return
 	}
-	
-	// Convert to DTO if needed, or return raw list. 
+
+	// Convert to DTO if needed, or return raw list.
 	// Returning raw list is fine as types.SubtitleTask matches JSON requirements
 	response.R(c, response.Response{
 		Error: 0,
@@ -166,7 +167,7 @@ func (h Handler) RetryTask(c *gin.Context) {
 	}
 
 	// Resume/Retry logic: Do NOT delete files or DB record to allow resume capability to work
-	
+
 	// Determine voice code: use persisted one, or default if empty (legacy tasks)
 	voiceCode := task.TtsVoiceCode
 	if voiceCode == "" {
@@ -259,14 +260,32 @@ func (h Handler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	localFilePath := filepath.Join(".", requestedFile)
-	if _, err := os.Stat(localFilePath); os.IsNotExist(err) {
-		c.JSON(404, response.Response{
-			Error: -1,
-			Msg:   "文件不存在",
-			Data:  nil,
-		})
+	// Only allow downloads from a small set of safe directories.
+	// The router uses a wildcard (*filepath), so the param can contain slashes.
+	requestedFile = filepath.Clean(requestedFile)
+	requestedFile = strings.TrimPrefix(requestedFile, string(filepath.Separator))
+
+	allowedRoots := []string{"tasks", "uploads", "static"}
+	var localFilePath string
+	for _, root := range allowedRoots {
+		cand := filepath.Join(root, requestedFile)
+		cand = filepath.Clean(cand)
+		// Ensure the cleaned path stays within the allowed root.
+		if strings.HasPrefix(cand, root+string(filepath.Separator)) || cand == root {
+			localFilePath = cand
+			break
+		}
+	}
+
+	if localFilePath == "" {
+		c.JSON(403, response.Response{Error: -1, Msg: "非法路径", Data: nil})
 		return
 	}
+
+	if _, err := os.Stat(localFilePath); os.IsNotExist(err) {
+		c.JSON(404, response.Response{Error: -1, Msg: "文件不存在", Data: nil})
+		return
+	}
+
 	c.FileAttachment(localFilePath, filepath.Base(localFilePath))
 }
