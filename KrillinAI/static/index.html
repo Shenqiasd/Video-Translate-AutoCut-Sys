@@ -1204,11 +1204,15 @@
                 </div>
               </div>
 
-              <!-- 音色克隆 (仅限阿里云) -->
+              <!-- 音色克隆 (火山) -->
               <div class="form-group" id="voice-clone-group" style="display: none;">
+                <label class="form-label">音色克隆 SpeakerID<br />Voice Clone SpeakerID (S_*):</label>
+                <input type="text" id="voice-clone-speaker-id" placeholder="必填，例如 S_xxxx（从火山控制台获取）" class="form-input"
+                  style="width: 300px" />
+                <div style="height: 10px;"></div>
                 <label class="form-label">选择音色克隆样本<br />Select Voice Clone Sample:</label>
                 <input type="file" id="voiceFileInput" accept="audio/*" class="form-input" style="width: 300px" />
-                <span class="hint">（仅 Aliyun TTS 支持）</span>
+                <span class="hint">（火山声音复刻 ICL2.0：会上传样本并训练/更新该 SpeakerID）</span>
               </div>
             </div>
 
@@ -2503,7 +2507,8 @@
         updateVoiceOptions(provider);
 
         if (voiceCloneGroup) {
-          voiceCloneGroup.style.display = (provider === "aliyun") ? "block" : "none";
+          // Voice clone is implemented via Volcengine speaker_id (S_*). It works with Doubao provider.
+          voiceCloneGroup.style.display = (provider === "doubao") ? "block" : "none";
         }
       } else {
         if (voiceCloneGroup) voiceCloneGroup.style.display = "none";
@@ -2556,12 +2561,17 @@
           formData.tts_voice_code = voiceSelect.value;
         }
 
+        // Voice clone (Volc) requires speaker_id (S_*) + reference audio
+        const cloneSpeakerIdEl = document.getElementById("voice-clone-speaker-id");
         if (uploadedAudioUrl) {
-          formData.tts_voice_clone_src_file_url = Array.isArray(
-            uploadedAudioUrl
-          )
+          formData.tts_voice_clone_src_file_url = Array.isArray(uploadedAudioUrl)
             ? uploadedAudioUrl[0]
             : uploadedAudioUrl;
+
+          // If user provided speaker id, prefer it as voice code for cloned voice.
+          if (cloneSpeakerIdEl && cloneSpeakerIdEl.value) {
+            formData.tts_voice_code = cloneSpeakerIdEl.value;
+          }
         }
       }
 

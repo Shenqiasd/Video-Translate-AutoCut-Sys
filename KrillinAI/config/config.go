@@ -85,12 +85,23 @@ type DoubaoTtsConfig struct {
 	Cluster     string `toml:"cluster"`
 }
 
+type VoiceCloneVolcConfig struct {
+	AppId            string `toml:"app_id"`
+	AccessToken      string `toml:"access_token"`
+	ResourceId       string `toml:"resource_id"`
+	ModelType        int    `toml:"model_type"`
+	ClusterIcl       string `toml:"cluster_icl"`
+	Language         int    `toml:"language"`
+	ExplicitLanguage string `toml:"explicit_language"`
+}
+
 type Tts struct {
-	Provider string                 `toml:"provider"`
-	Openai   OpenaiCompatibleConfig `toml:"openai"`
-	Aliyun   AliyunTtsConfig        `toml:"aliyun"`
-	Minimax  MinimaxTtsConfig       `toml:"minimax"`
-	Doubao   DoubaoTtsConfig        `toml:"doubao"`
+	Provider       string                 `toml:"provider"`
+	Openai         OpenaiCompatibleConfig `toml:"openai"`
+	Aliyun         AliyunTtsConfig        `toml:"aliyun"`
+	Minimax        MinimaxTtsConfig       `toml:"minimax"`
+	Doubao         DoubaoTtsConfig        `toml:"doubao"`
+	VoiceCloneVolc VoiceCloneVolcConfig   `toml:"voice_clone_volc"`
 }
 
 type OpenAiWhisper struct {
@@ -153,6 +164,13 @@ var Conf = Config{
 		Provider: "openai",
 		Openai: OpenaiCompatibleConfig{
 			Model: "gpt-4o-mini-tts",
+		},
+		VoiceCloneVolc: VoiceCloneVolcConfig{
+			ResourceId:       "seed-icl-2.0",
+			ModelType:        4,
+			ClusterIcl:       "volcano_icl",
+			Language:         0,
+			ExplicitLanguage: "",
 		},
 	},
 	SmartClipper: SmartClipperConfig{

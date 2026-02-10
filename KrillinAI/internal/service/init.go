@@ -5,12 +5,13 @@ import (
 	"krillin-ai/internal/types"
 	"krillin-ai/log"
 	"krillin-ai/pkg/aliyun"
+	"krillin-ai/pkg/doubao"
 	"krillin-ai/pkg/fasterwhisper"
 	"krillin-ai/pkg/openai"
+	"krillin-ai/pkg/tts"
 	"krillin-ai/pkg/whisper"
 	"krillin-ai/pkg/whispercpp"
 	"krillin-ai/pkg/whisperkit"
-	"krillin-ai/pkg/tts"
 
 	"go.uber.org/zap"
 )
@@ -20,7 +21,7 @@ type Service struct {
 	ChatCompleter    types.ChatCompleter
 	TtsClient        types.Ttser
 	OssClient        *aliyun.OssClient
-	VoiceCloneClient *aliyun.VoiceCloneClient
+	VoiceCloneClient *doubao.VoiceCloneClient
 }
 
 func NewService() *Service {
@@ -57,6 +58,6 @@ func NewService() *Service {
 		ChatCompleter:    chatCompleter,
 		TtsClient:        ttsClient,
 		OssClient:        aliyun.NewOssClient(config.Conf.Transcribe.Aliyun.Oss.AccessKeyId, config.Conf.Transcribe.Aliyun.Oss.AccessKeySecret, config.Conf.Transcribe.Aliyun.Oss.Bucket),
-		VoiceCloneClient: aliyun.NewVoiceCloneClient(config.Conf.Tts.Aliyun.Speech.AccessKeyId, config.Conf.Tts.Aliyun.Speech.AccessKeySecret, config.Conf.Tts.Aliyun.Speech.AppKey),
+		VoiceCloneClient: doubao.NewVoiceCloneClient(config.Conf.Tts.VoiceCloneVolc.AppId, config.Conf.Tts.VoiceCloneVolc.AccessToken, config.Conf.Tts.VoiceCloneVolc.ResourceId),
 	}
 }

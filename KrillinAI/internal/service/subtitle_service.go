@@ -112,18 +112,17 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 		return nil, apperrors.Wrap(apperrors.CodeDBError, "保存任务失败 Failed to save task", err)
 	}
 
-	// 处理声音克隆源
-	var voiceCloneAudioUrl string
+	// 处理声音克隆源（火山：上传参考音频训练 speaker_id，合成时 voice_type=SpeakerID 且 cluster=volcano_icl）
+	// 约束：火山的 upload/status 接口要求 speaker_id (S_*) 从控制台获取，因此这里复用 req.TtsVoiceCode 作为 SpeakerID。
 	if req.TtsVoiceCloneSrcFileUrl != "" {
-		localFileUrl := strings.TrimPrefix(req.TtsVoiceCloneSrcFileUrl, "local:")
-		fileKey := util.GenerateRandStringWithUpperLowerNum(5) + filepath.Ext(localFileUrl) // 防止url encode的问题，这里统一处理
-		err = s.OssClient.UploadFile(context.Background(), fileKey, localFileUrl, s.OssClient.Bucket)
-		if err != nil {
-			log.GetLogger().Error("StartVideoSubtitleTask UploadFile err", zap.Any("req", req), zap.Error(err))
-			return nil, errors.New("上传声音克隆源失败")
+		localFile := strings.TrimPrefix(req.TtsVoiceCloneSrcFileUrl, "local:")
+		if req.TtsVoiceCode == "" {
+			return nil, errors.New("启用语音克隆时必须填写 voice_code（SpeakerID，形如 S_***）")
 		}
-		voiceCloneAudioUrl = fmt.Sprintf("https://%s.oss-cn-shanghai.aliyuncs.com/%s", s.OssClient.Bucket, fileKey)
-		log.GetLogger().Info("StartVideoSubtitleTask 上传声音克隆源成功", zap.Any("oss url", voiceCloneAudioUrl))
+		if _, err := s.prepareVolcVoiceClone(ctx, localFile, req.TtsVoiceCode); err != nil {
+			log.GetLogger().Error("StartVideoSubtitleTask voice clone failed", zap.Any("req", req), zap.Error(err))
+			return nil, fmt.Errorf("语音克隆训练失败: %w", err)
+		}
 	}
 
 	stepParam := &types.SubtitleTaskStepParam{
@@ -136,7 +135,6 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 		EnableModalFilter:       req.ModalFilter == types.SubtitleTaskModalFilterYes,
 		EnableTts:               req.Tts == types.SubtitleTaskTtsYes,
 		TtsVoiceCode:            req.TtsVoiceCode,
-		VoiceCloneAudioUrl:      voiceCloneAudioUrl,
 		ReplaceWordsMap:         replaceWordsMap,
 		OriginLanguage:          types.StandardLanguageCode(req.OriginLanguage),
 		TargetLanguage:          types.StandardLanguageCode(req.TargetLang),

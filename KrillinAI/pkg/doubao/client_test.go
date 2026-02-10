@@ -20,8 +20,8 @@ func TestNewDoubaoClient(t *testing.T) {
 	if client.Cluster != cluster {
 		t.Errorf("Expected Cluster %s, got %s", cluster, client.Cluster)
 	}
-	if client.BaseURL != "https://openspeech.bytedance.com/api/v1/tts" {
-		t.Errorf("Expected BaseURL %s, got %s", "https://openspeech.bytedance.com/api/v1/tts", client.BaseURL)
+	if client.BaseURL != "https://openspeech.bytedance.com/api/v3/tts/unidirectional" {
+		t.Errorf("Expected BaseURL %s, got %s", "https://openspeech.bytedance.com/api/v3/tts/unidirectional", client.BaseURL)
 	}
 }
 
