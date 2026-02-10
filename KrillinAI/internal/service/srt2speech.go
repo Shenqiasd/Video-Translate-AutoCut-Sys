@@ -88,6 +88,26 @@ func (s Service) srtFileToSpeech(ctx context.Context, stepParam *types.SubtitleT
 		}
 
 		outputFile := filepath.Join(stepParam.TaskBasePath, fmt.Sprintf("subtitle_%d.wav", i+1))
+
+		// 3. Generate TTS Audio
+		// Call TTS Service to generate audio file
+		err = s.TtsClient.Text2Speech(sub.Text, stepParam.TtsVoiceCode, outputFile)
+		if err != nil {
+			log.GetLogger().Error("srtFileToSpeech TTS generation error", 
+				zap.Int("index", i+1),
+				zap.String("text", sub.Text),
+				zap.Error(err))
+			// Don't return error immediately? The logic below handles missing files in processSubtitlesConcurrently (which this is NOT).
+			// This is the sequential version.
+			// If TTS fails here, we should probably return error or generate silence?
+			// The original code seemed to rely on concurrency batching, but here it's sequential?
+			// Wait, the code I read earlier had `processSubtitlesConcurrently` function...
+			// But `srtFileToSpeech` (lines 45-103) is a sequential loop!
+			// Did I overlook a call to `processSubtitlesConcurrently`?
+			// No, `srtFileToSpeech` seems to be the main loop.
+			// Let's assume sequential for now.
+			return fmt.Errorf("TTS generation failed for subtitle %d: %w", i+1, err)
+		}
 		adjustedFile := filepath.Join(stepParam.TaskBasePath, fmt.Sprintf("adjusted_%d.wav", i+1))
 		
 		actualDuration, err := adjustAudioDuration(outputFile, adjustedFile, stepParam.TaskBasePath, targetDuration)

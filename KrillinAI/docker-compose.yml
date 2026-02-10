@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  krillin:
+    image: asteria798/krillinai:latest
+    container_name: krillin
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./config/config.toml:/app/config/config.toml
+      - ./tasks:/app/tasks
+      - ./models:/app/models
+      - ./bin:/app/bin
+      - ./cookies.txt:/app/cookies.txt
+      - ./static:/app/static
+    depends_on:
+      - redis
+    environment:
+      - REDIS_ADDR=redis:6379
+    restart: unless-stopped
+    networks:
+      - krillin-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: krillin-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    networks:
+      - krillin-network
+
+networks:
+  krillin-network:
+    driver: bridge
+
+volumes:
+  redis-data:

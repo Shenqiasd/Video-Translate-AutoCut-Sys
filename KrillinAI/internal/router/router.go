@@ -28,6 +28,10 @@ func SetupRouter(r *gin.Engine) {
 		// Smart Clipper Routes
 		api.POST("/smart_clipper/analyze", hdl.AnalyzeVideo)
 		api.POST("/smart_clipper/submit", hdl.SubmitClips)
+		// Cookie Management Routes
+		api.GET("/cookie/status", hdl.GetCookieStatus)
+		api.POST("/cookie/upload", hdl.UploadCookie)
+		api.POST("/cookie/validate", hdl.ValidateCookie)
 	}
 
 	r.GET("/", func(c *gin.Context) {

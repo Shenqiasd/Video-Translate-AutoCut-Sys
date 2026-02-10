@@ -8,6 +8,7 @@ import (
 	"krillin-ai/internal/storage"
 	"krillin-ai/internal/types"
 	"krillin-ai/log"
+	apperrors "krillin-ai/pkg/errors"
 	"krillin-ai/pkg/util"
 	"os"
 	"path/filepath"
@@ -22,13 +23,13 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 	if strings.Contains(req.Url, "youtube.com") {
 		videoId, _ := util.GetYouTubeID(req.Url)
 		if videoId == "" {
-			return nil, fmt.Errorf("链接不合法")
+			return nil, apperrors.New(apperrors.CodeUnsupportedURL, "YouTube链接不合法 Invalid YouTube URL")
 		}
 	}
 	if strings.Contains(req.Url, "bilibili.com") {
 		videoId := util.GetBilibiliVideoId(req.Url)
 		if videoId == "" {
-			return nil, fmt.Errorf("链接不合法")
+			return nil, apperrors.New(apperrors.CodeUnsupportedURL, "Bilibili链接不合法 Invalid Bilibili URL")
 		}
 	}
 	// 生成或复用任务id
@@ -108,7 +109,7 @@ func (s Service) StartSubtitleTask(req dto.StartVideoSubtitleTaskReq) (*dto.Star
 	// Migrate to DB: storage.SubtitleTasks.Store(taskId, taskPtr) -> SaveTask
 	if err := storage.SaveTask(taskPtr); err != nil {
 		log.GetLogger().Error("StartVideoSubtitleTask SaveTask err", zap.Error(err))
-		return nil, fmt.Errorf("保存任务失败: %v", err)
+		return nil, apperrors.Wrap(apperrors.CodeDBError, "保存任务失败 Failed to save task", err)
 	}
 
 	// 处理声音克隆源

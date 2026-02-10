@@ -1436,6 +1436,69 @@
             应用配置 Application Configuration
           </h1>
 
+          <!-- Cookie 管理 -->
+          <div class="card" id="cookie-management-card">
+            <h3 class="card-title">🍪 Cookie 管理 Cookie Management</h3>
+
+            <!-- Cookie 状态指示器 -->
+            <div class="cookie-status-bar" id="cookie-status-bar">
+              <div class="cookie-status-indicator" id="cookie-status-indicator">
+                <span class="cookie-status-dot" id="cookie-status-dot"></span>
+                <span class="cookie-status-text" id="cookie-status-text">检测中... Checking...</span>
+              </div>
+              <div class="cookie-status-details" id="cookie-status-details"></div>
+            </div>
+
+            <!-- 操作区域 -->
+            <div class="form-group">
+              <label class="form-label">上传 Cookie 文件 Upload Cookie File:</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="file" id="cookie-file-input" accept=".txt" style="flex: 1;" class="form-input" />
+                <button type="button" id="cookie-upload-btn" class="btn-secondary"
+                  style="white-space: nowrap; padding: 8px 16px;">
+                  上传 Upload
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">或粘贴 Cookie 内容 Or Paste Cookie Content:</label>
+              <textarea id="cookie-paste-area" class="form-input" rows="5"
+                placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;1234567890&#9;__Secure-3PSID&#9;value..."
+                style="font-family: monospace; font-size: 12px; resize: vertical;"></textarea>
+              <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <button type="button" id="cookie-paste-btn" class="btn-secondary" style="padding: 8px 16px;">
+                  保存粘贴内容 Save Pasted Content
+                </button>
+                <button type="button" id="cookie-validate-btn" class="btn-secondary" style="padding: 8px 16px;">
+                  验证 Cookie Validate Cookie
+                </button>
+              </div>
+            </div>
+
+            <!-- 使用说明 -->
+            <details class="cookie-help-section">
+              <summary style="cursor: pointer; color: #6366f1; font-weight: 500; padding: 8px 0;">
+                📖 如何获取 Cookie？ How to get cookies?
+              </summary>
+              <div
+                style="padding: 12px; background: #f8fafc; border-radius: 8px; margin-top: 8px; font-size: 13px; line-height: 1.8;">
+                <p><strong>方法 Method:</strong></p>
+                <ol style="padding-left: 20px; margin: 8px 0;">
+                  <li>在 Chrome/Edge 浏览器安装 <strong>"Get cookies.txt LOCALLY"</strong> 扩展</li>
+                  <li>登录 YouTube (确保可以正常观看视频)</li>
+                  <li>在 YouTube 页面点击扩展图标</li>
+                  <li>点击 <strong>"Export"</strong> 导出 Netscape 格式 Cookies</li>
+                  <li>在上方上传文件或粘贴内容</li>
+                </ol>
+                <p style="color: #ef4444; margin-top: 8px;">
+                  ⚠️ Cookie 通常在 <strong>1-3个月</strong> 后过期，届时需要重新导出。
+                  Cookie typically expires after <strong>1-3 months</strong>, re-export when needed.
+                </p>
+              </div>
+            </details>
+          </div>
+
           <!-- 应用配置 -->
           <div class="card">
             <h3 class="card-title">应用配置 App Config</h3>
@@ -2171,6 +2234,147 @@
         saveConfig(true, false);
       };
     }
+
+    // ===== Cookie 管理逻辑 =====
+    async function loadCookieStatus() {
+      try {
+        const res = await fetch("/api/cookie/status");
+        const data = await res.json();
+        if (data.error === 0 && data.data) {
+          updateCookieStatusUI(data.data);
+        }
+      } catch (e) {
+        console.error("加载Cookie状态失败:", e);
+      }
+    }
+
+    function updateCookieStatusUI(status) {
+      const dot = document.getElementById("cookie-status-dot");
+      const text = document.getElementById("cookie-status-text");
+      const details = document.getElementById("cookie-status-details");
+      if (!dot || !text) return;
+
+      // Remove all status classes
+      dot.className = "cookie-status-dot";
+
+      if (status.status === "valid") {
+        dot.classList.add("cookie-dot-valid");
+        text.textContent = "✅ " + status.statusMsg;
+      } else if (status.status === "expiring_soon") {
+        dot.classList.add("cookie-dot-warning");
+        text.textContent = "⚠️ " + status.statusMsg;
+      } else if (status.status === "expired") {
+        dot.classList.add("cookie-dot-expired");
+        text.textContent = "❌ " + status.statusMsg;
+      } else {
+        dot.classList.add("cookie-dot-expired");
+        text.textContent = "❌ " + status.statusMsg;
+      }
+
+      if (details && status.exists) {
+        let detailHtml = `<span>Cookie数量: ${status.cookieCount}</span>`;
+        detailHtml += ` | <span>最后更新: ${status.lastModified}</span>`;
+        if (status.earliestExpiry) {
+          detailHtml += ` | <span>最早过期: ${status.earliestExpiry}</span>`;
+        }
+        details.innerHTML = detailHtml;
+      } else if (details) {
+        details.innerHTML = "";
+      }
+    }
+
+    // Upload cookie file
+    const cookieUploadBtn = document.getElementById("cookie-upload-btn");
+    if (cookieUploadBtn) {
+      cookieUploadBtn.onclick = async () => {
+        const fileInput = document.getElementById("cookie-file-input");
+        if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+          alert("请选择Cookie文件 Please select a cookie file");
+          return;
+        }
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+        try {
+          cookieUploadBtn.disabled = true;
+          cookieUploadBtn.textContent = "上传中... Uploading...";
+          const res = await fetch("/api/cookie/upload", { method: "POST", body: formData });
+          const data = await res.json();
+          if (data.error === 0) {
+            alert(data.data.message || "上传成功 Upload successful");
+            fileInput.value = "";
+            loadCookieStatus();
+          } else {
+            alert(data.msg || "上传失败 Upload failed");
+          }
+        } catch (e) {
+          alert("上传失败 Upload failed: " + e.message);
+        } finally {
+          cookieUploadBtn.disabled = false;
+          cookieUploadBtn.textContent = "上传 Upload";
+        }
+      };
+    }
+
+    // Paste cookie content
+    const cookiePasteBtn = document.getElementById("cookie-paste-btn");
+    if (cookiePasteBtn) {
+      cookiePasteBtn.onclick = async () => {
+        const textarea = document.getElementById("cookie-paste-area");
+        if (!textarea || !textarea.value.trim()) {
+          alert("请粘贴Cookie内容 Please paste cookie content");
+          return;
+        }
+        try {
+          cookiePasteBtn.disabled = true;
+          cookiePasteBtn.textContent = "保存中... Saving...";
+          const res = await fetch("/api/cookie/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: textarea.value }),
+          });
+          const data = await res.json();
+          if (data.error === 0) {
+            alert(data.data.message || "保存成功 Save successful");
+            textarea.value = "";
+            loadCookieStatus();
+          } else {
+            alert(data.msg || "保存失败 Save failed");
+          }
+        } catch (e) {
+          alert("保存失败 Save failed: " + e.message);
+        } finally {
+          cookiePasteBtn.disabled = false;
+          cookiePasteBtn.textContent = "保存粘贴内容 Save Pasted Content";
+        }
+      };
+    }
+
+    // Validate cookie
+    const cookieValidateBtn = document.getElementById("cookie-validate-btn");
+    if (cookieValidateBtn) {
+      cookieValidateBtn.onclick = async () => {
+        try {
+          cookieValidateBtn.disabled = true;
+          cookieValidateBtn.textContent = "验证中... Validating...";
+          const res = await fetch("/api/cookie/validate", { method: "POST" });
+          const data = await res.json();
+          if (data.error === 0) {
+            alert("✅ " + (data.data.message || "Cookie有效 Cookie is valid"));
+          } else {
+            alert("❌ " + (data.msg || "Cookie无效 Cookie is invalid"));
+          }
+          loadCookieStatus();
+        } catch (e) {
+          alert("验证失败 Validation failed: " + e.message);
+        } finally {
+          cookieValidateBtn.disabled = false;
+          cookieValidateBtn.textContent = "验证 Cookie Validate Cookie";
+        }
+      };
+    }
+
+    // Load cookie status when config page becomes visible
+    loadCookieStatus();
 
     // 表单交互逻辑
     const voiceoverToggleEl = document.getElementById("voiceover-toggle");

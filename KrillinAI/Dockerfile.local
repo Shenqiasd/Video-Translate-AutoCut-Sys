@@ -20,14 +20,26 @@ FROM ubuntu:22.04
 WORKDIR /app
 
 # Install dependencies
+# Install dependencies
 RUN sed -i 's/archive.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
     sed -i 's/security.ubuntu.com/mirrors.aliyun.com/g' /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends curl gnupg && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y --no-install-recommends wget ca-certificates ffmpeg unzip fontconfig fonts-noto-cjk fonts-wqy-microhei fonts-wqy-zenhei xfonts-wqy python3 python3-pip && \
-    pip3 install "audio-separator[cpu]" && \
-    curl -fsSL https://deno.land/install.sh | sh && \
+    apt-get install -y --no-install-recommends curl gnupg wget ca-certificates unzip fontconfig && \
+    apt-get install -y --no-install-recommends fonts-wqy-microhei fonts-wqy-zenhei xfonts-wqy
+
+# Install Node.js
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs
+
+# Install Python & Audio Separator with CPU-only PyTorch
+RUN apt-get install -y --no-install-recommends ffmpeg python3 python3-pip && \
+    pip3 install --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    torch==2.3.0+cpu torchaudio==2.3.0+cpu && \
+    pip3 install --no-cache-dir "audio-separator[cpu]"
+
+# Install Deno
+RUN curl -fsSL https://deno.land/install.sh | sh && \
     mv /root/.deno/bin/deno /usr/bin/deno && \
     rm -rf /var/lib/apt/lists/*
 

@@ -7,6 +7,7 @@ import (
 	"krillin-ai/internal/deps"
 	"krillin-ai/internal/storage"
 	"krillin-ai/log"
+	apperrors "krillin-ai/pkg/errors"
 	"os"
 	"path/filepath"
 
@@ -18,11 +19,7 @@ func (h Handler) StartSubtitleTask(c *gin.Context) {
 	var req dto.StartVideoSubtitleTaskReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		log.GetLogger().Error("StartSubtitleTask ShouldBindJSON err", zap.Error(err))
-		response.R(c, response.Response{
-			Error: -1,
-			Msg:   "参数错误",
-			Data:  nil,
-		})
+		response.ErrorResponse(c, apperrors.Wrap(apperrors.CodeInvalidParams, "参数错误 Invalid parameters", err))
 		return
 	}
 	log.GetLogger().Info("StartSubtitleTask received request", zap.Any("req", req))
@@ -39,18 +36,10 @@ func (h Handler) StartSubtitleTask(c *gin.Context) {
 
 	data, err := svc.StartSubtitleTask(req)
 	if err != nil {
-		response.R(c, response.Response{
-			Error: -1,
-			Msg:   err.Error(),
-			Data:  nil,
-		})
+		response.ErrorResponse(c, err)
 		return
 	}
-	response.R(c, response.Response{
-		Error: 0,
-		Msg:   "成功",
-		Data:  data,
-	})
+	response.Success(c, data)
 }
 
 func (h Handler) GetSubtitleTask(c *gin.Context) {
