@@ -6,10 +6,15 @@ import (
 	"krillin-ai/internal/dto"
 	"krillin-ai/internal/mocks"
 	"krillin-ai/internal/types"
+	"krillin-ai/log"
 	apperrors "krillin-ai/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func init() {
+	log.InitLogger()
+}
 
 func TestStartSubtitleTask_InvalidYouTubeURL(t *testing.T) {
 	// Create service with mocks
@@ -25,7 +30,7 @@ func TestStartSubtitleTask_InvalidYouTubeURL(t *testing.T) {
 
 	// Test with invalid YouTube URL
 	req := dto.StartVideoSubtitleTaskReq{
-		Url: "https://youtube.com/invalid",
+		Url: "https://youtube.com/watch",
 	}
 
 	_, err := svc.StartSubtitleTask(req)
@@ -64,7 +69,7 @@ func TestStartSubtitleTask_ValidLocalFile(t *testing.T) {
 
 func TestGetTaskStatus_TaskNotFound(t *testing.T) {
 	mockTranscriber := new(mocks.MockTranscriber)
-	mockChatCompleter := new(mocks.MockChatCompleter) 
+	mockChatCompleter := new(mocks.MockChatCompleter)
 	mockTts := new(mocks.MockTtser)
 
 	svc := &Service{
@@ -79,24 +84,19 @@ func TestGetTaskStatus_TaskNotFound(t *testing.T) {
 
 	result, err := svc.GetTaskStatus(req)
 
-	// Should return nil result with status 0 (not started) for non-existent task
-	// or error depending on implementation
-	if err != nil {
-		assert.Contains(t, err.Error(), "not found")
-	} else {
-		assert.NotNil(t, result)
-		assert.Equal(t, types.SubtitleTaskStatusNotStarted, result.Status)
-	}
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "任务不存在")
 }
 
 // TestResultTypeMapping tests the subtitle result type mapping logic
 func TestResultTypeMapping(t *testing.T) {
 	testCases := []struct {
-		name          string
-		targetLang    string
-		bilingual     int8
-		translationPos int8
-		expectedType  types.SubtitleResultType
+		name           string
+		targetLang     string
+		bilingual      uint8
+		translationPos uint8
+		expectedType   types.SubtitleResultType
 	}{
 		{
 			name:         "Origin only when targetLang is none",
@@ -105,18 +105,18 @@ func TestResultTypeMapping(t *testing.T) {
 			expectedType: types.SubtitleResultTypeOriginOnly,
 		},
 		{
-			name:          "Bilingual with translation on top",
-			targetLang:    "zh",
-			bilingual:     types.SubtitleTaskBilingualYes,
+			name:           "Bilingual with translation on top",
+			targetLang:     "zh",
+			bilingual:      types.SubtitleTaskBilingualYes,
 			translationPos: types.SubtitleTaskTranslationSubtitlePosTop,
-			expectedType:  types.SubtitleResultTypeBilingualTranslationOnTop,
+			expectedType:   types.SubtitleResultTypeBilingualTranslationOnTop,
 		},
 		{
-			name:          "Bilingual with translation on bottom",
-			targetLang:    "zh",
-			bilingual:     types.SubtitleTaskBilingualYes,
-			translationPos: types.SubtitleTaskTranslationSubtitlePosBottom,
-			expectedType:  types.SubtitleResultTypeBilingualTranslationOnBottom,
+			name:           "Bilingual with translation on bottom",
+			targetLang:     "zh",
+			bilingual:      types.SubtitleTaskBilingualYes,
+			translationPos: types.SubtitleTaskTranslationSubtitlePosBelow,
+			expectedType:   types.SubtitleResultTypeBilingualTranslationOnBottom,
 		},
 		{
 			name:         "Target only",

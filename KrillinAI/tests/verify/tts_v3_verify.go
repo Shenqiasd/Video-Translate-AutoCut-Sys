@@ -1,3 +1,6 @@
+//go:build verify
+// +build verify
+
 package main
 
 import (
@@ -22,8 +25,8 @@ type V3User struct {
 }
 
 type V3ReqParams struct {
-	Text        string       `json:"text"`
-	Speaker     string       `json:"speaker"`
+	Text        string        `json:"text"`
+	Speaker     string        `json:"speaker"`
 	AudioParams V3AudioParams `json:"audio_params"`
 }
 
@@ -36,14 +39,14 @@ func main() {
 	// NEW Credentials from user
 	appId := "6940236983"
 	accessToken := "yN_0wdVIr_nsn1hdzBZZJ8KSH_8jgjt5"
-	
+
 	// Unidirectional HTTP endpoint (simpler than WebSocket for testing)
 	url := "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
 
 	// Resource IDs to test (Character version 1.0)
 	resourceIds := []string{
-		"seed-tts-1.0",             // Character version 1.0 (alias)
-		"volc.service_type.10029",  // Character version 1.0 (numeric)
+		"seed-tts-1.0",            // Character version 1.0 (alias)
+		"volc.service_type.10029", // Character version 1.0 (numeric)
 	}
 
 	// Voice from user's list
@@ -51,7 +54,7 @@ func main() {
 
 	for _, resId := range resourceIds {
 		fmt.Printf("\n=== Testing Resource ID: %s ===\n", resId)
-		
+
 		reqBody := V3TTSRequest{
 			User: V3User{
 				Uid: "test_user_" + uuid.New().String()[:8],
@@ -68,7 +71,7 @@ func main() {
 
 		jsonData, _ := json.Marshal(reqBody)
 		req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-		
+
 		// CORRECT Headers per official docs:
 		// X-Api-App-Key = APP ID (NOT X-Api-App-Id!)
 		// X-Api-Access-Key = Access Token
@@ -77,7 +80,7 @@ func main() {
 		req.Header.Set("X-Api-Access-Key", accessToken)
 		req.Header.Set("X-Api-Resource-Id", resId)
 		req.Header.Set("Content-Type", "application/json")
-		
+
 		client := &http.Client{Timeout: 15 * time.Second}
 		resp, err := client.Do(req)
 		if err != nil {
@@ -88,7 +91,7 @@ func main() {
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		fmt.Printf("Status: %s\n", resp.Status)
-		
+
 		if len(bodyBytes) > 500 {
 			// If large response, likely audio data - SUCCESS!
 			fmt.Printf("Response Size: %d bytes (likely audio data - SUCCESS!)\n", len(bodyBytes))

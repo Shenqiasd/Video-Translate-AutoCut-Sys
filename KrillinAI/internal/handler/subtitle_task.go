@@ -264,12 +264,18 @@ func (h Handler) DownloadFile(c *gin.Context) {
 	// The router uses a wildcard (*filepath), so the param can contain slashes.
 	requestedFile = filepath.Clean(requestedFile)
 	requestedFile = strings.TrimPrefix(requestedFile, string(filepath.Separator))
+	requestedFile = strings.TrimPrefix(requestedFile, "/")
 
 	allowedRoots := []string{"tasks", "uploads", "static"}
 	var localFilePath string
 	for _, root := range allowedRoots {
-		cand := filepath.Join(root, requestedFile)
-		cand = filepath.Clean(cand)
+		// Support both full paths like "tasks/abc/file.srt" and relative paths like "abc/file.srt".
+		if requestedFile == root || strings.HasPrefix(requestedFile, root+string(filepath.Separator)) {
+			localFilePath = requestedFile
+			break
+		}
+
+		cand := filepath.Clean(filepath.Join(root, requestedFile))
 		// Ensure the cleaned path stays within the allowed root.
 		if strings.HasPrefix(cand, root+string(filepath.Separator)) || cand == root {
 			localFilePath = cand

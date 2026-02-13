@@ -1,3 +1,6 @@
+//go:build verify
+// +build verify
+
 package main
 
 import (
@@ -38,7 +41,7 @@ type DoubaoAudio struct {
 type DoubaoReqBody struct {
 	ReqId     string `json:"reqid"`
 	Text      string `json:"text"`
-	Operation string `json:"operation"` 
+	Operation string `json:"operation"`
 }
 
 func main() {
@@ -49,15 +52,15 @@ func main() {
 
 	// Header formats to test
 	formats := []string{
-		"Bearer;" + token,      // No space
-		"Bearer; " + token,     // With space
-		"Bearer " + token,      // Standard space
+		"Bearer;" + token,  // No space
+		"Bearer; " + token, // With space
+		"Bearer " + token,  // Standard space
 	}
 
 	for _, authorization := range formats {
 		fmt.Printf("\n----------------------------------------------------------------\n")
 		fmt.Printf("Testing Authorization Header: '%s...'\n", authorization[:15]) // Truncate for security in logs
-		
+
 		reqId := uuid.New().String()
 		reqBody := DoubaoTTSRequest{
 			App: DoubaoApp{
