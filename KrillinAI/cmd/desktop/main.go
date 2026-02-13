@@ -1,5 +1,5 @@
-//go:build desktop
-// +build desktop
+//go:build desktop || windows
+// +build desktop windows
 
 package main
 
@@ -13,6 +13,10 @@ import (
 )
 
 func main() {
+	if handled, exitCode := handleCLIFlags(); handled {
+		os.Exit(exitCode)
+	}
+
 	log.InitLogger()
 	defer log.GetLogger().Sync()
 
