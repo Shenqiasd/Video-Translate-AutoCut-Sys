@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"krillin-ai/internal/appdirs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,10 +67,17 @@ func printDiagnose() {
 		fmt.Printf("executable: <error: %v>\n", err)
 	}
 
-	printPath("config", filepath.Join("config", "config.toml"))
-	printPath("log", "app.log")
-	printPath("output", "tasks")
-	printPath("cache", "cache")
+	dirs, err := appdirs.Resolve()
+	if err != nil {
+		fmt.Printf("paths: <error: %v>\n", err)
+	} else {
+		fmt.Printf("portable_mode: %t\n", dirs.Portable)
+		printPath("config_dir", dirs.ConfigDir)
+		printPath("config_file", dirs.ConfigFile)
+		printPath("log_dir", dirs.LogDir)
+		printPath("output_dir", dirs.OutputDir)
+		printPath("cache_dir", dirs.CacheDir)
+	}
 
 	if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
 		fmt.Printf("dependency.ffmpeg: found (%s)\n", ffmpegPath)
