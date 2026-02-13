@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package integration
 
 import (
@@ -35,7 +38,7 @@ func TestHistoryAPI(t *testing.T) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		t.Fatalf("Failed to decode response: %v", err)
 	}
-	
+
 	// Assuming the API returns a generic response structure
 	if _, ok := result["code"]; !ok {
 		t.Logf("Response might not have 'code' field: %v", result)

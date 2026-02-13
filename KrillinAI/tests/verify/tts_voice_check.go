@@ -1,3 +1,6 @@
+//go:build verify
+// +build verify
+
 package main
 
 import (

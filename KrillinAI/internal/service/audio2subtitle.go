@@ -450,19 +450,19 @@ func (s Service) audioToSrt(ctx context.Context, stepParam *types.SubtitleTaskSt
 									invalidCount++
 								}
 							}
-							
-							// Threshold: If we find ANY untranslated segments (and we expect translation), 
+
+							// Threshold: If we find ANY untranslated segments (and we expect translation),
 							// explicitly invalidate the cache to force re-translation.
 							// This fixes the issue where partial failures (fallback to origin) are persisted and never fixed.
 							if invalidCount > 0 {
-								log.GetLogger().Warn("Resume Capability: Found potential untranslated segments, invalidating cache to force retry", 
-									zap.Int("invalidCount", invalidCount), 
+								log.GetLogger().Warn("Resume Capability: Found potential untranslated segments, invalidating cache to force retry",
+									zap.Int("invalidCount", invalidCount),
 									zap.String("path", translationSavePath))
 								loadedData = nil
 								translatedResults = nil
 							} else {
-                                log.GetLogger().Info("Resume Capability: Data validation passed", zap.Int("count", len(translatedResults)))
-                            }
+								log.GetLogger().Info("Resume Capability: Data validation passed", zap.Int("count", len(translatedResults)))
+							}
 						}
 					} else {
 						loadedData = nil
@@ -547,11 +547,11 @@ func (s Service) audioToSrt(ctx context.Context, stepParam *types.SubtitleTaskSt
 				if !ok {
 					return nil
 				}
-				
+
 				// Resume Capability: Persist transcription result immediately
 				transcriptionSavePath := filepath.Join(stepParam.TaskBasePath, fmt.Sprintf(types.SubtitleTaskAudioTranscriptionDataPersistenceFileNamePattern, transcribedItem.Id))
 				_ = util.SaveToDisk(transcribedItem.Data, transcriptionSavePath)
-				
+
 				// 处理转录结果
 				audioSegments[transcribedItem.Id].TranscriptionData = transcribedItem.Data
 				// 发送翻译任务
@@ -816,7 +816,6 @@ func splitSrt(stepParam *types.SubtitleTaskStepParam) error {
 		stepParam.TtsSourceFilePath = originLanguageSrtFilePath
 	}
 
-
 	// 添加摘要文件（如果存在）
 	originSummaryPath := filepath.Join(stepParam.TaskBasePath, "output/origin_language.txt")
 	if _, err := os.Stat(originSummaryPath); err == nil {
@@ -831,7 +830,7 @@ func splitSrt(stepParam *types.SubtitleTaskStepParam) error {
 		}
 		stepParam.SubtitleInfos = append(stepParam.SubtitleInfos, subtitleInfo)
 	}
-	
+
 	targetSummaryPath := filepath.Join(stepParam.TaskBasePath, "output/target_language.txt")
 	if _, err := os.Stat(targetSummaryPath); err == nil {
 		subtitleInfo = types.SubtitleFileInfo{
@@ -1306,7 +1305,7 @@ func parseAndCheckContent(splitContent, originalText string) ([]*TranslatedItem,
 		if splitContent == originalText {
 			return result, nil
 		} else if splitContent == "" {
-			return nil, fmt.Errorf("splitContent is empty but originalText is not, originalText: " + originalText)
+			return nil, fmt.Errorf("splitContent is empty but originalText is not, originalText: %s", originalText)
 		} else {
 			return nil, errors.New("originalText is empty but splitContent is not, splitContent: " + splitContent)
 		}
