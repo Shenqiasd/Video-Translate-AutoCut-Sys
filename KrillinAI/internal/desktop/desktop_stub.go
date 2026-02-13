@@ -1,5 +1,5 @@
-//go:build !desktop
-// +build !desktop
+//go:build !desktop && !windows
+// +build !desktop,!windows
 
 package desktop
 
