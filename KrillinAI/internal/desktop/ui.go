@@ -755,9 +755,10 @@ func createTtsConfigGroup() *fyne.Container {
 func createDependencyStatusGroup(window fyne.Window) *fyne.Container {
 	statusList := container.NewVBox()
 
-	refreshStatus := func() {
+	var refreshStatus func()
+	refreshStatus = func() {
 		states := deps.ResolveDependencyInventory(config.Conf.Transcribe.Provider, config.Conf.Tts.Provider)
-		renderDependencyStatusRows(window, statusList, states)
+		renderDependencyStatusRows(window, statusList, states, refreshStatus)
 	}
 
 	runDiagnoseButton := SecondaryButton("Run Diagnose", theme.InfoIcon(), func() {
@@ -786,7 +787,7 @@ func createDependencyStatusGroup(window fyne.Window) *fyne.Container {
 	)
 }
 
-func renderDependencyStatusRows(window fyne.Window, statusList *fyne.Container, states []deps.DependencyState) {
+func renderDependencyStatusRows(window fyne.Window, statusList *fyne.Container, states []deps.DependencyState, refreshStatus func()) {
 	statusList.Objects = nil
 
 	if len(states) == 0 {
@@ -808,7 +809,7 @@ func renderDependencyStatusRows(window fyne.Window, statusList *fyne.Container, 
 			if dependency.Tier != tier {
 				continue
 			}
-			statusList.Add(createDependencyStatusRow(window, dependency))
+			statusList.Add(createDependencyStatusRow(window, dependency, refreshStatus))
 			tierCount++
 		}
 		if tierCount == 0 {
@@ -827,7 +828,7 @@ func createDependencyTierLabel(tier deps.DependencyTier) fyne.CanvasObject {
 	return container.NewPadded(label)
 }
 
-func createDependencyStatusRow(window fyne.Window, dependency deps.DependencyState) fyne.CanvasObject {
+func createDependencyStatusRow(window fyne.Window, dependency deps.DependencyState, refreshStatus func()) fyne.CanvasObject {
 	statusText, statusColor := dependencyStatusDisplay(dependency.Status)
 
 	title := canvas.NewText(dependency.Name, theme.Color(theme.ColorNameForeground))
@@ -868,12 +869,63 @@ func createDependencyStatusRow(window fyne.Window, dependency deps.DependencySta
 		textSection.Add(errorLabel)
 	}
 
-	fixButton := widget.NewButtonWithIcon("Fix/Install", theme.DownloadIcon(), func() {
-		dialog.ShowInformation(
-			"Fix/Install",
-			fmt.Sprintf("%s automatic fix/install will be available in T2.2.", dependency.Name),
+	var fixButton *widget.Button
+	fixButton = widget.NewButtonWithIcon("Fix/Install", theme.DownloadIcon(), func() {
+		if !deps.CanAutoInstallDependency(dependency.ID) {
+			dialog.ShowInformation(
+				"Fix/Install",
+				fmt.Sprintf("Automatic install is currently supported for ffmpeg/ffprobe/yt-dlp only. %s is not supported.", dependency.Name),
+				window,
+			)
+			return
+		}
+
+		progressLabel := widget.NewLabel("Preparing installer...")
+		progressLabel.Wrapping = fyne.TextWrapWord
+		progressBar := widget.NewProgressBar()
+		progressBar.SetValue(0)
+		progressContent := container.NewVBox(progressLabel, progressBar)
+		progressDialog := dialog.NewCustomWithoutButtons(
+			fmt.Sprintf("Fix/Install %s", dependency.Name),
+			progressContent,
 			window,
 		)
+		progressDialog.Show()
+		fixButton.Disable()
+
+		go func() {
+			err := deps.InstallDependency(dependency.ID, func(progress deps.InstallProgress) {
+				if progress.Percent > 0 {
+					progressBar.SetValue(progress.Percent)
+				}
+				message := strings.TrimSpace(progress.Message)
+				if message == "" {
+					message = "Installing..."
+				}
+				if progress.Total > 0 {
+					message = fmt.Sprintf(
+						"%s (%.2f MB / %.2f MB)",
+						message,
+						float64(progress.Downloaded)/1024/1024,
+						float64(progress.Total)/1024/1024,
+					)
+				}
+				progressLabel.SetText(message)
+			})
+
+			progressDialog.Hide()
+			fixButton.Enable()
+
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("自动安装%s失败: %v", dependency.Name, err), window)
+				return
+			}
+
+			if refreshStatus != nil {
+				refreshStatus()
+			}
+			dialog.ShowInformation("Fix/Install", fmt.Sprintf("%s installed successfully.", dependency.Name), window)
+		}()
 	})
 	fixButton.Importance = widget.MediumImportance
 

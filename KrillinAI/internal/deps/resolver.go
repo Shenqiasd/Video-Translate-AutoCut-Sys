@@ -137,6 +137,8 @@ func ResolveDependencyInventory(transcribeProvider, ttsProvider string) []Depend
 }
 
 func BuildDependencyInventory(transcribeProvider, ttsProvider string) []DependencySpec {
+	EnsureManagedDependencyPaths()
+
 	normalizedTranscribeProvider := strings.ToLower(strings.TrimSpace(transcribeProvider))
 	normalizedTtsProvider := strings.ToLower(strings.TrimSpace(ttsProvider))
 
