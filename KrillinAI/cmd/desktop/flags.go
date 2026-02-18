@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"krillin-ai/internal/appdirs"
+	"krillin-ai/log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -77,6 +78,12 @@ func printDiagnose() {
 		printPath("log_dir", dirs.LogDir)
 		printPath("output_dir", dirs.OutputDir)
 		printPath("cache_dir", dirs.CacheDir)
+	}
+
+	if effectiveLogDir, err := log.ResolveLogDir(); err != nil {
+		fmt.Printf("path.effective_log_dir: <error: %v>\n", err)
+	} else {
+		printPath("effective_log_dir", effectiveLogDir)
 	}
 
 	if ffmpegPath, err := exec.LookPath("ffmpeg"); err == nil {
