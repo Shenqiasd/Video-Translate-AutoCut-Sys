@@ -1,0 +1,26 @@
+Implemented T1.5 for desktop `--diagnose`.
+
+- Updated diagnostics in `cmd/desktop/flags.go:64` to print effective path set:
+  - `path.config_dir`, `path.config_file`
+  - `path.log_dir`, `path.log_file`
+  - `path.output_dir`, `path.task_root`
+  - `path.cache_dir`, `path.db_file`
+  - `task_root` and `db_file` are derived via `internal/appdirs/runtime_paths` helpers (`appdirs.TaskRootFor`, `appdirs.DBPathFor`).
+
+- Added directory writability checks in `cmd/desktop/flags.go:145`:
+  - For `config_dir`, `log_dir`, `output_dir`, `task_root`, `cache_dir`
+  - Each check does `MkdirAll` + `CreateTemp` + close + cleanup
+  - Prints `writable.<dir>: ok` or `writable.<dir>: error (<reason>)`.
+
+- Added best-effort dependency summary in `cmd/desktop/flags.go:179`:
+  - `dependency.ffmpeg`, `dependency.ffprobe`, `dependency.yt-dlp`, `dependency.edge-tts`
+  - Uses `internal/storage` configured paths first, otherwise `exec.LookPath`
+  - Prints `unknown` on unresolved lookups (instead of crashing).
+
+- Expanded tests in `cmd/desktop/flags_test.go:75`:
+  - Coverage for effective path output + writability output + dependency output.
+  - Coverage for storage-path dependency fallback and unknown statuses.
+  - Coverage for writability error path.
+
+Validation:
+- Ran `go test ./...` successfully (all packages passed).
