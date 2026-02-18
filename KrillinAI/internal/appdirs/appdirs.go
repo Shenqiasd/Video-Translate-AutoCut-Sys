@@ -132,7 +132,7 @@ func defaultNonWindowsPaths() Paths {
 		ConfigDir:  configDir,
 		ConfigFile: filepath.Join(configDir, configFileName),
 		LogDir:     ".",
-		OutputDir:  "tasks",
+		OutputDir:  ".",
 		CacheDir:   "cache",
 	}
 }

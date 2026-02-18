@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"krillin-ai/internal/appdirs"
 	"krillin-ai/internal/types"
 	"krillin-ai/log"
 	"os"
@@ -13,15 +14,17 @@ import (
 )
 
 var DB *gorm.DB
+var appDirsResolver = appdirs.Resolve
 
 func InitDB() {
-	var err error
-	dbPath := "data/krillin.db"
-	
-	// Ensure data directory exists
+	dbPath, err := resolveDBPath()
+	if err != nil {
+		log.GetLogger().Fatal("failed to resolve database path", zap.Error(err))
+	}
+
 	dir := filepath.Dir(dbPath)
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		_ = os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		log.GetLogger().Fatal("failed to create database directory", zap.String("dir", dir), zap.Error(err))
 	}
 
 	DB, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{
@@ -36,6 +39,14 @@ func InitDB() {
 	if err != nil {
 		log.GetLogger().Fatal("failed to migrate database", zap.Error(err))
 	}
-	
+
 	log.GetLogger().Info("Database initialized successfully", zap.String("path", dbPath))
+}
+
+func resolveDBPath() (string, error) {
+	dirs, err := appDirsResolver()
+	if err != nil {
+		return "", err
+	}
+	return appdirs.DBPathFor(dirs), nil
 }

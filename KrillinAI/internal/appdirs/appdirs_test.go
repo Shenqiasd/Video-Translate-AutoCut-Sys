@@ -67,7 +67,7 @@ func TestResolveLayouts(t *testing.T) {
 				ConfigDir:  "config",
 				ConfigFile: filepath.Join("config", "config.toml"),
 				LogDir:     ".",
-				OutputDir:  "tasks",
+				OutputDir:  ".",
 				CacheDir:   "cache",
 			},
 		},

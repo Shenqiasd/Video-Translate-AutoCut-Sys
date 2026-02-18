@@ -23,7 +23,7 @@ import (
 
 func (s Service) embedSubtitles(ctx context.Context, stepParam *types.SubtitleTaskStepParam) error {
 	var err error
-	log.GetLogger().Info("embedSubtitles start", 
+	log.GetLogger().Info("embedSubtitles start",
 		zap.String("VideoType", stepParam.EmbedSubtitleVideoType),
 		zap.Bool("EnableTts", stepParam.EnableTts),
 		zap.String("VideoWithTtsFilePath", stepParam.VideoWithTtsFilePath))
@@ -251,12 +251,12 @@ func srtToAss(inputSRT, outputASS string, isHorizontal bool, stepParam *types.Su
 			var majorText, minorText string
 			if stepParam.SubtitleResultType == types.SubtitleResultTypeBilingualTranslationOnTop {
 				// 目标语言在上（subtitleLines[0]），原语言在下（subtitleLines[1]）
-				majorText = subtitleLines[0]  // 中文
-				minorText = util.CleanPunction(subtitleLines[1])  // 英文
+				majorText = subtitleLines[0]                     // 中文
+				minorText = util.CleanPunction(subtitleLines[1]) // 英文
 			} else {
 				// 原语言在上（subtitleLines[0]），目标语言在下（subtitleLines[1]） - 需要交换
-				majorText = subtitleLines[1]  // 中文
-				minorText = util.CleanPunction(subtitleLines[0])  // 英文
+				majorText = subtitleLines[1]                     // 中文
+				minorText = util.CleanPunction(subtitleLines[0]) // 英文
 			}
 			combinedText := fmt.Sprintf("{\\an2}{\\rMajor}%s\\N{\\rMinor}%s", majorText, minorText)
 			_, _ = assFile.WriteString(fmt.Sprintf("Dialogue: 0,%s,%s,Major,,0,0,0,,%s\n", startFormatted, endFormatted, combinedText))
@@ -372,13 +372,12 @@ func embedSubtitles(stepParam *types.SubtitleTaskStepParam, isHorizontal bool, w
 		input = stepParam.VideoWithTtsFilePath
 	}
 
-
 	// Escape path properly for FFmpeg ass filter
 	// Use absolute path and escape special characters including apostrophes
 	assPathEscaped := strings.ReplaceAll(assPath, "'", "\\'")
 	assPathEscaped = strings.ReplaceAll(assPathEscaped, "\\", "/")
-	
-	cmd := exec.Command(storage.FfmpegPath, "-y", "-i", input, "-vf", fmt.Sprintf("ass='%s'", assPathEscaped), "-c:a", "aac", "-b:a", "192k", filepath.Join(stepParam.TaskBasePath, fmt.Sprintf("/output/%s", outputFileName)))
+
+	cmd := exec.Command(storage.FfmpegPath, "-y", "-i", input, "-vf", fmt.Sprintf("ass='%s'", assPathEscaped), "-c:a", "aac", "-b:a", "192k", filepath.Join(stepParam.TaskBasePath, "output", outputFileName))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.GetLogger().Error("embedSubtitles embed subtitle into video ffmpeg error", zap.String("video path", stepParam.InputVideoPath), zap.String("output", string(output)), zap.Error(err))

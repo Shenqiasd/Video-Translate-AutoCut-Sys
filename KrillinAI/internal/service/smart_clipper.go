@@ -29,7 +29,10 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 	log.GetLogger().Info("SmartClipper: AnalyzeVideo", zap.String("url", req.Url))
 
 	// 1. Create temporary directory for analysis
-	tempDir := filepath.Join("data", "temp_analysis", util.GenerateRandStringWithUpperLowerNum(8))
+	tempDir, err := resolveCacheDirPath("temp_analysis", util.GenerateRandStringWithUpperLowerNum(8))
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve temp dir: %w", err)
+	}
 	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create temp dir: %w", err)
 	}
@@ -43,11 +46,11 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 		"--write-auto-sub",
 		"--sub-lang", "en,zh-Hans,zh-Hant,ja",
 		"--output", filepath.Join(tempDir, "%(title)s.%(ext)s"),
-		"--dump-json", // Output JSON info to stdout
+		"--dump-json",               // Output JSON info to stdout
 		"--ignore-no-formats-error", // Ignore "Requested format is not available"
 		req.Url,
 	}
-	
+
 	if config.Conf.App.Proxy != "" {
 		cmdArgs = append(cmdArgs, "--proxy", config.Conf.App.Proxy)
 	}
@@ -78,7 +81,7 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 			}
 		}
 	}
-	
+
 	// 3. Find Subtitle File (.vtt)
 	var subFile string
 	entries, _ := os.ReadDir(tempDir)
@@ -98,7 +101,7 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 		return nil, fmt.Errorf("failed to read subtitle file: %w", err)
 	}
 	// Simple VTT text extraction (Removing timestamps and metadata lines)
-	// Or just pass the whole thing if Kimi supports it? 
+	// Or just pass the whole thing if Kimi supports it?
 	// To save tokens, let's do a simple cleanup.
 	cleanText := cleanVttContent(string(subContent))
 
@@ -112,13 +115,13 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 	// Determine Config (Fallback to global LLM config if specific one is empty)
 	scBaseUrl := config.Conf.SmartClipper.BaseUrl
 	scApiKey := config.Conf.SmartClipper.ApiKey
-	
+
 	if scApiKey == "" {
 		// Fallback to main LLM config
 		// Use Transcribe.Openai if provider is openai? Or Llm?
-		// User mentioned "Kimi API Key already provided" for translation. 
+		// User mentioned "Kimi API Key already provided" for translation.
 		// Usually translation uses Llm config or Transcribe config?
-		// Looking at config.go: Conf.Llm is OpenaiCompatibleConfig. 
+		// Looking at config.go: Conf.Llm is OpenaiCompatibleConfig.
 		// Let's assume Conf.Llm is the one.
 		scBaseUrl = config.Conf.Llm.BaseUrl
 		scApiKey = config.Conf.Llm.ApiKey
@@ -134,7 +137,7 @@ func (s *Service) AnalyzeVideo(req dto.SmartClipperAnalyzeReq) (*dto.SmartClippe
 		config.Conf.App.Proxy,
 	)
 
-	// Call ChatCompletion (Non-streaming for simplicity in backend logic, but client only has streaming implemented in openai.go? 
+	// Call ChatCompletion (Non-streaming for simplicity in backend logic, but client only has streaming implemented in openai.go?
 	// openai.go: ChatCompletion returns string but uses stream internally. That's fine.)
 	llmResp, err := kimiClient.ChatCompletion(prompt)
 	if err != nil {
@@ -179,13 +182,18 @@ func (s *Service) SubmitClips(req dto.SmartClipperSubmitReq) (*dto.SmartClipperS
 	}
 	data := val.(types.SmartClipperCacheData)
 
-	// 2. Download Full Video (if not present) 
+	// 2. Download Full Video (if not present)
 	// Currently data.VideoPath is empty. We need to download it.
 	// We create a "master" task folder for this video source
 	masterTaskId := fmt.Sprintf("master_%s", data.VideoId)
-	masterTaskDir := filepath.Join("tasks", masterTaskId)
-	os.MkdirAll(masterTaskDir, os.ModePerm)
-	
+	masterTaskDir, err := resolveTaskDir(masterTaskId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve master task dir: %w", err)
+	}
+	if err := os.MkdirAll(masterTaskDir, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("failed to create master task dir: %w", err)
+	}
+
 	masterVideoPath := filepath.Join(masterTaskDir, "master.mp4")
 	if _, err := os.Stat(masterVideoPath); os.IsNotExist(err) {
 		// Download Logic
@@ -198,7 +206,7 @@ func (s *Service) SubmitClips(req dto.SmartClipperSubmitReq) (*dto.SmartClipperS
 			cmdArgs = append(cmdArgs, "--proxy", config.Conf.App.Proxy)
 		}
 		cmdArgs = append(cmdArgs, "--cookies", "/app/cookies.txt")
-		
+
 		log.GetLogger().Info("SmartClipper: Downloading master video", zap.String("id", data.VideoId))
 		cmd := exec.Command(storage.YtdlpPath, cmdArgs...)
 		if out, err := cmd.CombinedOutput(); err != nil {
@@ -209,7 +217,7 @@ func (s *Service) SubmitClips(req dto.SmartClipperSubmitReq) (*dto.SmartClipperS
 
 	// 3. Process each clip
 	var taskIds []string
-	
+
 	for _, clipId := range req.SelectedClipIds {
 		// Find clip info
 		var targetClip *types.ClipInfo
@@ -226,21 +234,28 @@ func (s *Service) SubmitClips(req dto.SmartClipperSubmitReq) (*dto.SmartClipperS
 		// 3.1 Split Video using ffmpeg
 		// Task ID for child task
 		childTaskId := fmt.Sprintf("clip_%s_%d", data.VideoId, clipId)
-		childTaskDir := filepath.Join("tasks", childTaskId)
-		os.MkdirAll(childTaskDir, os.ModePerm)
-		
+		childTaskDir, err := resolveTaskDir(childTaskId)
+		if err != nil {
+			log.GetLogger().Error("SmartClipper: resolve child task dir failed", zap.String("childId", childTaskId), zap.Error(err))
+			continue
+		}
+		if err := os.MkdirAll(childTaskDir, os.ModePerm); err != nil {
+			log.GetLogger().Error("SmartClipper: create child task dir failed", zap.String("childId", childTaskId), zap.Error(err))
+			continue
+		}
+
 		clipVideoPath := filepath.Join(childTaskDir, "origin_video.mp4") // naming convention for StartSubtitleTask input?
 		// NOTE: StartSubtitleTask usually expects a URL or local file path.
-		
+
 		// ffmpeg -ss START -to END -i master -c copy output
 		// -c copy is fast but might inaccurate at keyframes. If re-encoding needed, remove "-c copy"
-		// StartSubtitleTask will process it again anyway, so maybe copy is fine for source, 
+		// StartSubtitleTask will process it again anyway, so maybe copy is fine for source,
 		// BUT StartSubtitleTask flow downloads the video itself if URL provided.
 		// If we provide "local:/path/to/video", linkToFile supports it (I saw it in link2file.go: line 27)
-		
-		cmd := exec.Command(storage.FfmpegPath, 
-			"-y", "-ss", targetClip.Start, "-to", targetClip.End, 
-			"-i", masterVideoPath, 
+
+		cmd := exec.Command(storage.FfmpegPath,
+			"-y", "-ss", targetClip.Start, "-to", targetClip.End,
+			"-i", masterVideoPath,
 			"-c", "copy", // Try stream copy first
 			"-avoid_negative_ts", "1",
 			clipVideoPath,
@@ -256,10 +271,10 @@ func (s *Service) SubmitClips(req dto.SmartClipperSubmitReq) (*dto.SmartClipperS
 		// Clone request params
 		taskReq := req.TaskParams
 		taskReq.Url = "local:" + clipVideoPath // Magic prefix for local file
-		taskReq.ReuseTaskId = childTaskId // Use predicted ID
-		
+		taskReq.ReuseTaskId = childTaskId      // Use predicted ID
+
 		// Call StartSubtitleTask
-		_, err := s.StartSubtitleTask(taskReq)
+		_, err = s.StartSubtitleTask(taskReq)
 		if err != nil {
 			log.GetLogger().Error("SmartClipper: failed to start task", zap.String("childId", childTaskId), zap.Error(err))
 		} else {
