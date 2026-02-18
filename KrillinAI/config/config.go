@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"krillin-ai/internal/appdirs"
 	"krillin-ai/log"
 	"net/url"
 	"os"
@@ -225,18 +226,33 @@ func validateConfig() error {
 
 func LoadConfig() bool {
 	var err error
-	configPath := "./config/config.toml"
-	if _, err = os.Stat(configPath); os.IsNotExist(err) {
-		log.GetLogger().Info("未找到配置文件")
+	configPath, err := ResolveConfigPath()
+	if err != nil {
+		log.GetLogger().Error("解析配置文件路径失败", zap.Error(err))
 		return false
-	} else {
-		log.GetLogger().Info("已找到配置文件，从配置文件中加载配置")
-		if _, err = toml.DecodeFile(configPath, &Conf); err != nil {
-			log.GetLogger().Error("加载配置文件失败", zap.Error(err))
-			return false
-		}
-		return true
 	}
+
+	if _, err = os.Stat(configPath); os.IsNotExist(err) {
+		log.GetLogger().Info("未找到配置文件", zap.String("path", configPath))
+		return false
+	}
+
+	log.GetLogger().Info("已找到配置文件，从配置文件中加载配置", zap.String("path", configPath))
+	if _, err = toml.DecodeFile(configPath, &Conf); err != nil {
+		log.GetLogger().Error("加载配置文件失败", zap.Error(err))
+		return false
+	}
+	return true
+}
+
+func ResolveConfigPath() (string, error) {
+	// Desktop/Windows builds resolve a portable-by-default config path.
+	// Non-Windows keeps the legacy relative config path.
+	dirs, err := appdirs.Resolve()
+	if err != nil {
+		return "", err
+	}
+	return dirs.ConfigFile, nil
 }
 
 // 验证配置
@@ -252,13 +268,14 @@ func CheckConfig() error {
 
 // SaveConfig 保存配置到文件
 func SaveConfig() error {
-	configPath := filepath.Join("config", "config.toml")
+	configPath, err := ResolveConfigPath()
+	if err != nil {
+		return err
+	}
 
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		err = os.MkdirAll(filepath.Dir(configPath), os.ModePerm)
-		if err != nil {
-			return err
-		}
+	err = os.MkdirAll(filepath.Dir(configPath), os.ModePerm)
+	if err != nil {
+		return err
 	}
 
 	data, err := toml.Marshal(Conf)

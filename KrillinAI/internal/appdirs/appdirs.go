@@ -44,13 +44,21 @@ func Resolve() (Paths, error) {
 
 func resolve(rawDeps resolveDeps) (Paths, error) {
 	deps := withDefaults(rawDeps)
+
 	if isPortableEnabled(deps.getenv(PortableEnv)) {
+		return resolvePortable(deps)
+	}
+	if shouldUsePortableByDefault(deps.goos) {
 		return resolvePortable(deps)
 	}
 	if deps.goos == "windows" {
 		return resolveWindows(deps)
 	}
 	return defaultNonWindowsPaths(), nil
+}
+
+func shouldUsePortableByDefault(goos string) bool {
+	return goos == "windows"
 }
 
 func withDefaults(deps resolveDeps) resolveDeps {

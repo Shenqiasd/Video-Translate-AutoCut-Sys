@@ -14,6 +14,8 @@ func TestResolveLayouts(t *testing.T) {
 
 	windowsConfigRoot := filepath.Join("C:", "Users", "alice", "AppData", "Roaming")
 	windowsCacheRoot := filepath.Join("C:", "Users", "alice", "AppData", "Local")
+	_ = windowsConfigRoot
+	_ = windowsCacheRoot
 
 	testCases := []struct {
 		name           string
@@ -43,20 +45,19 @@ func TestResolveLayouts(t *testing.T) {
 			wantExeCall: true,
 		},
 		{
-			name:          "windows layout when portable mode is disabled",
-			goos:          "windows",
-			portableEnv:   "",
-			userConfigDir: windowsConfigRoot,
-			userCacheDir:  windowsCacheRoot,
+			name:           "windows defaults to portable layout",
+			goos:           "windows",
+			portableEnv:    "",
+			executablePath: portableExePath,
 			want: Paths{
-				ConfigDir:  filepath.Join(windowsConfigRoot, "KrillinAI"),
-				ConfigFile: filepath.Join(windowsConfigRoot, "KrillinAI", "config.toml"),
-				LogDir:     filepath.Join(windowsCacheRoot, "KrillinAI", "logs"),
-				OutputDir:  filepath.Join(windowsCacheRoot, "KrillinAI", "output"),
-				CacheDir:   filepath.Join(windowsCacheRoot, "KrillinAI", "cache"),
+				Portable:   true,
+				ConfigDir:  filepath.Join(portableDataDir, "config"),
+				ConfigFile: filepath.Join(portableDataDir, "config", "config.toml"),
+				LogDir:     filepath.Join(portableDataDir, "logs"),
+				OutputDir:  filepath.Join(portableDataDir, "output"),
+				CacheDir:   filepath.Join(portableDataDir, "cache"),
 			},
-			wantConfigCall: true,
-			wantCacheCall:  true,
+			wantExeCall: true,
 		},
 		{
 			name:        "non windows keeps legacy relative defaults",
@@ -144,29 +145,15 @@ func TestResolveErrors(t *testing.T) {
 			wantErrSub: "no executable",
 		},
 		{
-			name: "windows mode returns user config error",
+			name: "windows portable-by-default returns executable lookup error",
 			deps: resolveDeps{
 				goos:   "windows",
 				getenv: func(string) string { return "" },
-				userConfigDir: func() (string, error) {
-					return "", errors.New("no config dir")
+				executable: func() (string, error) {
+					return "", errors.New("no executable")
 				},
 			},
-			wantErrSub: "no config dir",
-		},
-		{
-			name: "windows mode returns empty cache path error",
-			deps: resolveDeps{
-				goos:   "windows",
-				getenv: func(string) string { return "" },
-				userConfigDir: func() (string, error) {
-					return filepath.Join("C:", "Users", "alice", "AppData", "Roaming"), nil
-				},
-				userCacheDir: func() (string, error) {
-					return "   ", nil
-				},
-			},
-			wantErrSub: "user cache dir is empty",
+			wantErrSub: "no executable",
 		},
 	}
 
