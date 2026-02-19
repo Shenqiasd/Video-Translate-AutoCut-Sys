@@ -47,7 +47,9 @@ docker_manifests:
       - "{{ tolower .Env.DOCKER_USERNAME }}/{{ tolower .ProjectName }}:latest-arm64"
 
 archives:
-  - formats: ["binary"]
+  # Default: keep existing behavior (single binary) for linux/darwin.
+  - id: default-binary
+    formats: ["binary"]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
@@ -59,6 +61,21 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
       {{- end }}
+
+  # Windows portable distribution: zip containing exe + data/.
+  - id: windows-portable-zip
+    format: zip
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}
+    files:
+      - src: portable/data/**
+        dst: data
+        strip_parent: true
+    format_overrides:
+      - goos: windows
+        goarch: amd64
 
 release:
   extra_files:
