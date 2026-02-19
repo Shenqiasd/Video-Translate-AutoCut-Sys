@@ -1,12 +1,16 @@
 version: 2
 
 builds:
-  - env:
+  - id: server
+    env:
       - CGO_ENABLED=0
     goos:
       - darwin
       - linux
       - windows
+    goarch:
+      - amd64
+      - arm64
     main: ./cmd/server/main.go
 
 # Docker 构建配置
@@ -64,18 +68,18 @@ archives:
 
   # Windows portable distribution: zip containing exe + data/.
   - id: windows-portable-zip
+    builds: [server]
     format: zip
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
-      {{- title .Os }}
+      {{- title .Os }}_x86_64
     files:
       - src: portable/data/**
         dst: data
         strip_parent: true
-    format_overrides:
-      - goos: windows
-        goarch: amd64
+    # NOTE: archive-level goarch filtering is not supported in this goreleaser version.
+    # We rely on `builds.goarch` to control architectures.
 
 release:
   extra_files:
