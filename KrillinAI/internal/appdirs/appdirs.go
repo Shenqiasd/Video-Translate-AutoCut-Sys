@@ -81,7 +81,7 @@ func withDefaults(deps resolveDeps) resolveDeps {
 }
 
 func resolvePortable(deps resolveDeps) (Paths, error) {
-	executablePath, err := deps.executable()
+	executablePath, err := resolveExecutablePath(deps)
 	if err != nil {
 		return Paths{}, err
 	}
@@ -135,6 +135,13 @@ func defaultNonWindowsPaths() Paths {
 		OutputDir:  ".",
 		CacheDir:   "cache",
 	}
+}
+
+func resolveExecutablePath(deps resolveDeps) (string, error) {
+	if override := strings.TrimSpace(deps.getenv("KRILLINAI_TEST_EXECUTABLE")); override != "" {
+		return override, nil
+	}
+	return deps.executable()
 }
 
 func isPortableEnabled(value string) bool {
