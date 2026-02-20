@@ -245,6 +245,90 @@ func LoadConfig() bool {
 	return true
 }
 
+// LoadOrCreateConfig 加载配置文件；如果不存在则创建默认配置并保存。
+// 返回 (created, error)：created 为 true 表示是新创建的默认配置。
+func LoadOrCreateConfig() (bool, error) {
+	configPath, err := ResolveConfigPath()
+	if err != nil {
+		return false, err
+	}
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// 配置文件不存在，使用默认配置并保存
+		log.GetLogger().Info("配置文件不存在，创建默认配置", zap.String("path", configPath))
+		Conf = defaultConfig()
+		if err := SaveConfig(); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+
+	// 配置文件存在，加载它
+	if _, err := toml.DecodeFile(configPath, &Conf); err != nil {
+		return false, err
+	}
+	return false, nil
+}
+
+// defaultConfig 返回默认配置副本
+func defaultConfig() Config {
+	return Config{
+		App: App{
+			SegmentDuration:       5,
+			TranslateParallelNum:  3,
+			TranscribeParallelNum: 1,
+			TranscribeMaxAttempts: 3,
+			TranslateMaxAttempts:  3,
+			MaxSentenceLength:     70,
+		},
+		Server: Server{
+			Host: "127.0.0.1",
+			Port: 8888,
+		},
+		Llm: OpenaiCompatibleConfig{
+			Model: "gpt-4o-mini",
+		},
+		Transcribe: Transcribe{
+			Provider:              "openai",
+			EnableGpuAcceleration: false,
+			Openai: OpenaiCompatibleConfig{
+				Model: "whisper-1",
+			},
+			Fasterwhisper: LocalModelConfig{
+				Model: "large-v2",
+			},
+			Whisperkit: LocalModelConfig{
+				Model: "large-v2",
+			},
+			Whispercpp: LocalModelConfig{
+				Model: "large-v2",
+			},
+		},
+		Tts: Tts{
+			Provider: "openai",
+			Openai: OpenaiCompatibleConfig{
+				Model: "gpt-4o-mini-tts",
+			},
+			VoiceCloneVolc: VoiceCloneVolcConfig{
+				ResourceId:       "seed-icl-2.0",
+				ModelType:        4,
+				ClusterIcl:       "volcano_icl",
+				Language:         0,
+				ExplicitLanguage: "",
+			},
+		},
+		SmartClipper: SmartClipperConfig{
+			Enabled:         true,
+			Model:           "moonshot-v1-128k",
+			BaseUrl:         "https://api.moonshot.cn/v1",
+			ApiKey:          "",
+			Prompt:          "",
+			MinClipDuration: 60,
+			MaxClipDuration: 600,
+		},
+	}
+}
+
 func ResolveConfigPath() (string, error) {
 	// Desktop/Windows builds resolve a portable-by-default config path.
 	// Non-Windows keeps the legacy relative config path.
