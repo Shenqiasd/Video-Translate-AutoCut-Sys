@@ -334,6 +334,9 @@ var resolveConfigPath = func() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if paths.ConfigFile == "" {
+		return "", errors.New("config file path is empty")
+	}
 	return paths.ConfigFile, nil
 }
 
