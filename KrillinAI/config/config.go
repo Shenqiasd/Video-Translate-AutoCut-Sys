@@ -330,13 +330,11 @@ func defaultConfig() Config {
 }
 
 var resolveConfigPath = func() (string, error) {
-	// Desktop/Windows builds resolve a portable-by-default config path.
-	// Non-Windows keeps the legacy relative config path.
-	dirs, err := appdirs.Resolve()
+	paths, err := appdirs.Resolve()
 	if err != nil {
 		return "", err
 	}
-	return dirs.ConfigFile, nil
+	return paths.ConfigFile, nil
 }
 
 func ResolveConfigPath() (string, error) {
