@@ -225,20 +225,19 @@ func validateConfig() error {
 }
 
 func LoadConfig() bool {
-	var err error
 	configPath, err := ResolveConfigPath()
 	if err != nil {
 		log.GetLogger().Error("解析配置文件路径失败", zap.Error(err))
 		return false
 	}
 
-	if _, err = os.Stat(configPath); os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.GetLogger().Info("未找到配置文件", zap.String("path", configPath))
 		return false
 	}
 
 	log.GetLogger().Info("已找到配置文件，从配置文件中加载配置", zap.String("path", configPath))
-	if _, err = toml.DecodeFile(configPath, &Conf); err != nil {
+	if _, err := toml.DecodeFile(configPath, &Conf); err != nil {
 		log.GetLogger().Error("加载配置文件失败", zap.Error(err))
 		return false
 	}
