@@ -55,35 +55,19 @@ docker_manifests:
       - "{{ tolower .Env.DOCKER_USERNAME }}/{{ tolower .ProjectName }}:latest-arm64"
 
 archives:
-  # Default: keep existing behavior (single binary) for linux/darwin.
+  # Default: keep existing behavior (single binary) for server.
   - id: default-binary
     formats: ["binary"]
     name_template: >-
       {{ .ProjectName }}_
       {{- .Version }}_
       {{- if eq .Os "darwin" }}macOS_{{ .Arch }}
-      {{- else if and (eq .Os "windows") (eq .Arch "amd64") }}{{ title .Os }}
       {{- else }}{{ title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
       {{- end }}
-
-  # Windows portable distribution: zip containing exe + data/.
-  - id: windows-portable-zip
-    builds: []
-    format: zip
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- .Version }}_
-      {{- title .Os }}_x86_64
-    files:
-      - src: portable/data/**
-        dst: data
-        strip_parent: true
-    # NOTE: archive-level goarch filtering is not supported in this goreleaser version.
-    # We rely on `builds.goarch` to control architectures.
 
 release:
   extra_files:
