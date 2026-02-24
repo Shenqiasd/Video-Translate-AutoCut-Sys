@@ -39,6 +39,17 @@ Outputs:
 - `build\KrillinAI.exe`
 - `build\KrillinAI_Windows_portable.zip`
 
+## CI Release (GitHub Tags)
+
+On GitHub Actions release workflow (`.github/workflows/release.yml`), pushing a tag like `v1.2.3` now does:
+
+- build Windows desktop UI on `windows-latest` (`amd64` only)
+- run:
+  - `scripts/windows_build_desktop.ps1`
+  - `scripts/windows_package_portable.ps1`
+- upload `build\KrillinAI_Windows_portable.zip` as a workflow artifact
+- download that zip in the GoReleaser job to `build/`, where `release.extra_files` attaches it to the GitHub Release as a downloadable asset
+
 ## Troubleshooting
 
 ### `go` is not found
