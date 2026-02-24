@@ -1,0 +1,115 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "v*-*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-desktop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: KrillinAI
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "KrillinAI/go.mod"
+
+      - name: Install MSYS2 + MinGW-w64
+        id: setup-msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+
+      - name: Ensure MinGW path
+        shell: pwsh
+        run: |
+          $msys2Root = "${{ steps.setup-msys2.outputs.msys2-location }}"
+          if (-not $msys2Root) {
+            $msys2Root = "C:\msys64"
+          }
+
+          $mingw = Join-Path $msys2Root "mingw64\bin"
+          if (-not (Test-Path $mingw)) {
+            throw "MinGW path not found at $mingw"
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $mingw
+          $env:PATH = "$mingw;$env:PATH"
+
+          Write-Host "Added MinGW path: $mingw"
+          gcc --version
+
+      - name: Build desktop exe
+        shell: pwsh
+        run: .\scripts\windows_build_desktop.ps1
+
+      - name: Package portable zip
+        shell: pwsh
+        run: .\scripts\windows_package_portable.ps1
+
+      - name: Upload portable zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable-zip
+          path: KrillinAI/build/KrillinAI_Windows_portable.zip
+          retention-days: 1
+
+  goreleaser:
+    needs: build-desktop
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: KrillinAI
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-portable-zip
+          path: KrillinAI/build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "KrillinAI/go.mod"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+          workdir: KrillinAI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
