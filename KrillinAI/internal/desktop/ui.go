@@ -13,8 +13,11 @@ import (
 	"krillin-ai/log"
 	"krillin-ai/static"
 	"net/url"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -36,6 +39,7 @@ func CreateConfigTab(window fyne.Window) fyne.CanvasObject {
 	serverGroup := createServerConfigGroup()
 	transcribeGroup := createTranscribeConfigGroup()
 	ttsGroup := createTtsConfigGroup()
+	dependencyGroup := createDependencyStatusGroup(window)
 
 	var background *canvas.LinearGradient
 	if GetCurrentThemeIsDark() {
@@ -64,6 +68,7 @@ func CreateConfigTab(window fyne.Window) fyne.CanvasObject {
 		container.NewPadded(serverGroup),
 		container.NewPadded(transcribeGroup),
 		container.NewPadded(ttsGroup),
+		container.NewPadded(dependencyGroup),
 		spacer2,
 	)
 
@@ -745,6 +750,233 @@ func createTtsConfigGroup() *fyne.Container {
 	)
 
 	return GlassmorphismCard("文本转语音配置 TTS Config", "文本转语音配置 TTS config", form, GetCurrentThemeIsDark())
+}
+
+func createDependencyStatusGroup(window fyne.Window) *fyne.Container {
+	statusList := container.NewVBox()
+
+	var refreshStatus func()
+	refreshStatus = func() {
+		states := deps.ResolveDependencyInventory(config.Conf.Transcribe.Provider, config.Conf.Tts.Provider)
+		renderDependencyStatusRows(window, statusList, states, refreshStatus)
+	}
+
+	runDiagnoseButton := SecondaryButton("Run Diagnose", theme.InfoIcon(), func() {
+		report, err := runDesktopDiagnose()
+		if err != nil {
+			states := deps.ResolveDependencyInventory(config.Conf.Transcribe.Provider, config.Conf.Tts.Provider)
+			report = deps.FormatDependencyReport(states) + "\n\nFallback reason: " + err.Error()
+		}
+		dialog.ShowInformation("Dependency Diagnose", report, window)
+	})
+
+	refreshButton := GhostButton("Refresh Status", theme.ViewRefreshIcon(), refreshStatus)
+
+	content := container.NewVBox(
+		container.NewHBox(runDiagnoseButton, refreshButton),
+		statusList,
+	)
+
+	refreshStatus()
+
+	return GlassmorphismCard(
+		"依赖状态 Dependency Status",
+		"Must / Should / Optional",
+		content,
+		GetCurrentThemeIsDark(),
+	)
+}
+
+func renderDependencyStatusRows(window fyne.Window, statusList *fyne.Container, states []deps.DependencyState, refreshStatus func()) {
+	statusList.Objects = nil
+
+	if len(states) == 0 {
+		statusList.Add(widget.NewLabel("No dependency checks available."))
+		statusList.Refresh()
+		return
+	}
+
+	tiers := []deps.DependencyTier{
+		deps.DependencyTierMust,
+		deps.DependencyTierShould,
+		deps.DependencyTierOptional,
+	}
+
+	for _, tier := range tiers {
+		statusList.Add(createDependencyTierLabel(tier))
+		tierCount := 0
+		for _, dependency := range states {
+			if dependency.Tier != tier {
+				continue
+			}
+			statusList.Add(createDependencyStatusRow(window, dependency, refreshStatus))
+			tierCount++
+		}
+		if tierCount == 0 {
+			statusList.Add(widget.NewLabel("No dependencies in this tier."))
+		}
+	}
+
+	statusList.Refresh()
+}
+
+func createDependencyTierLabel(tier deps.DependencyTier) fyne.CanvasObject {
+	label := canvas.NewText(dependencyTierText(tier), theme.Color(theme.ColorNamePrimary))
+	label.TextStyle = fyne.TextStyle{Bold: true}
+	label.TextSize = 15
+
+	return container.NewPadded(label)
+}
+
+func createDependencyStatusRow(window fyne.Window, dependency deps.DependencyState, refreshStatus func()) fyne.CanvasObject {
+	statusText, statusColor := dependencyStatusDisplay(dependency.Status)
+
+	title := canvas.NewText(dependency.Name, theme.Color(theme.ColorNameForeground))
+	title.TextStyle = fyne.TextStyle{Bold: true}
+
+	status := canvas.NewText(statusText, statusColor)
+	status.TextStyle = fyne.TextStyle{Bold: true}
+
+	source := string(dependency.Source)
+	if source == "" {
+		source = "-"
+	}
+
+	resolvedPath := dependency.ResolvedPath
+	if resolvedPath == "" {
+		resolvedPath = "Not resolved"
+	}
+
+	metaLabel := widget.NewLabel(fmt.Sprintf("Tier: %s | Source: %s", dependencyTierText(dependency.Tier), source))
+	metaLabel.Wrapping = fyne.TextWrapWord
+
+	pathLabel := widget.NewLabel("Path: " + resolvedPath)
+	pathLabel.Wrapping = fyne.TextWrapBreak
+
+	hintLabel := widget.NewLabel("Hint: " + dependency.Hint)
+	hintLabel.Wrapping = fyne.TextWrapWord
+
+	textSection := container.NewVBox(
+		container.NewHBox(title, layout.NewSpacer(), status),
+		metaLabel,
+		pathLabel,
+		hintLabel,
+	)
+
+	if dependency.Error != "" {
+		errorLabel := canvas.NewText("Error: "+dependency.Error, color.NRGBA{R: 220, G: 38, B: 38, A: 255})
+		errorLabel.TextSize = 12
+		textSection.Add(errorLabel)
+	}
+
+	var fixButton *widget.Button
+	fixButton = widget.NewButtonWithIcon("Fix/Install", theme.DownloadIcon(), func() {
+		if !deps.CanAutoInstallDependency(dependency.ID) {
+			dialog.ShowInformation(
+				"Fix/Install",
+				fmt.Sprintf("Automatic install is currently supported for ffmpeg/ffprobe/yt-dlp only. %s is not supported.", dependency.Name),
+				window,
+			)
+			return
+		}
+
+		progressLabel := widget.NewLabel("Preparing installer...")
+		progressLabel.Wrapping = fyne.TextWrapWord
+		progressBar := widget.NewProgressBar()
+		progressBar.SetValue(0)
+		progressContent := container.NewVBox(progressLabel, progressBar)
+		progressDialog := dialog.NewCustomWithoutButtons(
+			fmt.Sprintf("Fix/Install %s", dependency.Name),
+			progressContent,
+			window,
+		)
+		progressDialog.Show()
+		fixButton.Disable()
+
+		go func() {
+			err := deps.InstallDependency(dependency.ID, func(progress deps.InstallProgress) {
+				if progress.Percent > 0 {
+					progressBar.SetValue(progress.Percent)
+				}
+				message := strings.TrimSpace(progress.Message)
+				if message == "" {
+					message = "Installing..."
+				}
+				if progress.Total > 0 {
+					message = fmt.Sprintf(
+						"%s (%.2f MB / %.2f MB)",
+						message,
+						float64(progress.Downloaded)/1024/1024,
+						float64(progress.Total)/1024/1024,
+					)
+				}
+				progressLabel.SetText(message)
+			})
+
+			progressDialog.Hide()
+			fixButton.Enable()
+
+			if err != nil {
+				dialog.ShowError(fmt.Errorf("自动安装%s失败: %v", dependency.Name, err), window)
+				return
+			}
+
+			if refreshStatus != nil {
+				refreshStatus()
+			}
+			dialog.ShowInformation("Fix/Install", fmt.Sprintf("%s installed successfully.", dependency.Name), window)
+		}()
+	})
+	fixButton.Importance = widget.MediumImportance
+
+	row := container.NewBorder(nil, nil, nil, fixButton, textSection)
+	return TransparentCard(row, GetCurrentThemeIsDark())
+}
+
+func dependencyTierText(tier deps.DependencyTier) string {
+	switch tier {
+	case deps.DependencyTierMust:
+		return "Must"
+	case deps.DependencyTierShould:
+		return "Should"
+	case deps.DependencyTierOptional:
+		return "Optional"
+	default:
+		return "Unknown"
+	}
+}
+
+func dependencyStatusDisplay(status deps.DependencyStatus) (string, color.Color) {
+	switch status {
+	case deps.DependencyStatusOK:
+		return "OK", color.NRGBA{R: 22, G: 163, B: 74, A: 255}
+	case deps.DependencyStatusMissing:
+		return "Missing", color.NRGBA{R: 245, G: 158, B: 11, A: 255}
+	case deps.DependencyStatusError:
+		return "Error", color.NRGBA{R: 220, G: 38, B: 38, A: 255}
+	default:
+		return "Unknown", color.NRGBA{R: 107, G: 114, B: 128, A: 255}
+	}
+}
+
+func runDesktopDiagnose() (string, error) {
+	executablePath, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+
+	output, err := exec.Command(executablePath, "--diagnose").CombinedOutput()
+	report := strings.TrimSpace(string(output))
+	if report == "" && err == nil {
+		report = "Diagnose returned no output."
+	}
+	if err != nil {
+		if report == "" {
+			return "", err
+		}
+		return report, err
+	}
+	return report, nil
 }
 
 // 创建视频输入容器

@@ -11,6 +11,7 @@ import (
 	"io"
 	"krillin-ai/config"
 	"krillin-ai/internal/api"
+	"krillin-ai/internal/appdirs"
 	"krillin-ai/internal/handler"
 	"krillin-ai/log"
 	"mime/multipart"
@@ -63,6 +64,14 @@ type taskResult struct {
 	subtitleInfo      []api.SubtitleResult
 	speechDownloadURL string
 	taskId            string
+}
+
+func taskOutputHintPath(taskID string) string {
+	taskDir, err := appdirs.ResolveTaskDir(taskID)
+	if err != nil {
+		return filepath.Join("output", "tasks", taskID, "output")
+	}
+	return filepath.Join(taskDir, "output")
 }
 
 // NewSubtitleManager 创建字幕管理器
@@ -776,7 +785,7 @@ func (sm *SubtitleManager) pollTaskStatus(taskId string) {
 
 			sm.displayMultiTaskDownloadLinks()
 
-			sm.tipsLabel.SetText(fmt.Sprintf("若需要查看合成的视频或者文字稿，请到软件目录下的/tasks/%s/output 目录下查看。", result.Data.TaskId))
+			sm.tipsLabel.SetText(fmt.Sprintf("若需要查看合成的视频或者文字稿，请到 %s 目录下查看。", taskOutputHintPath(result.Data.TaskId)))
 			sm.tipsLabel.Show()
 
 			return
@@ -830,7 +839,7 @@ func (sm *SubtitleManager) displayMultiTaskDownloadLinks() {
 			taskContainer.Add(speechBtn)
 		}
 
-		taskTip := widget.NewLabel(fmt.Sprintf("查看视频或文字稿: /tasks/%s/output", taskRes.taskId))
+		taskTip := widget.NewLabel(fmt.Sprintf("查看视频或文字稿: %s", taskOutputHintPath(taskRes.taskId)))
 		taskTip.Alignment = fyne.TextAlignCenter
 		taskContainer.Add(taskTip)
 

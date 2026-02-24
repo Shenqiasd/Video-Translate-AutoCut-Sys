@@ -1,0 +1,9 @@
+Implemented T1.3 end-to-end.
+
+- Logging now uses appdirs-resolved `LogDir` (portable-by-default on Windows), creates the directory automatically, and writes `app.log` there while keeping console logging unchanged in the zap tee core (`log/zap.go:19`, `log/zap.go:41`).
+- Added shared log-path helpers so logger and diagnostics use the same effective path resolution (`log/zap.go:49`, `log/zap.go:63`).
+- Desktop `--diagnose` now reports the effective log directory via `path.effective_log_dir` (`cmd/desktop/flags.go:83`).
+- Added tests for log dir resolution + log directory/file creation and diagnose output coverage (`log/zap_test.go:23`, `log/zap_test.go:68`, `cmd/desktop/flags_test.go:41`).
+
+Validation done:
+- Ran `go test ./...` successfully (all packages passed).

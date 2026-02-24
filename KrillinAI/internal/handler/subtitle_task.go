@@ -110,10 +110,11 @@ func (h Handler) DeleteTask(c *gin.Context) {
 	}
 
 	// 1. Delete files from disk
-	taskBasePath := filepath.Join("./tasks", taskId)
-	if err := os.RemoveAll(taskBasePath); err != nil {
-		log.GetLogger().Error("DeleteTask RemoveAll err", zap.String("path", taskBasePath), zap.Error(err))
-		// Continue to delete from DB even if file deletion fails
+	for _, taskPath := range taskDirCandidates(taskId) {
+		if err := os.RemoveAll(taskPath); err != nil {
+			log.GetLogger().Error("DeleteTask RemoveAll err", zap.String("path", taskPath), zap.Error(err))
+			// Continue to delete from DB even if file deletion fails
+		}
 	}
 
 	// 2. Delete from DB
@@ -229,8 +230,19 @@ func (h Handler) UploadFile(c *gin.Context) {
 
 	// 保存每个文件
 	var savedFiles []string
+	uploadRoot := preferredUploadRoot()
+	if err := os.MkdirAll(uploadRoot, 0o755); err != nil {
+		response.R(c, response.Response{
+			Error: -1,
+			Msg:   "创建上传目录失败",
+			Data:  nil,
+		})
+		return
+	}
+
 	for _, file := range files {
-		savePath := "./uploads/" + file.Filename
+		fileName := filepath.Base(file.Filename)
+		savePath := filepath.Join(uploadRoot, fileName)
 		if err := c.SaveUploadedFile(file, savePath); err != nil {
 			response.R(c, response.Response{
 				Error: -1,
@@ -262,33 +274,25 @@ func (h Handler) DownloadFile(c *gin.Context) {
 
 	// Only allow downloads from a small set of safe directories.
 	// The router uses a wildcard (*filepath), so the param can contain slashes.
-	requestedFile = filepath.Clean(requestedFile)
-	requestedFile = strings.TrimPrefix(requestedFile, string(filepath.Separator))
 	requestedFile = strings.TrimPrefix(requestedFile, "/")
+	requestedFile = strings.TrimPrefix(requestedFile, string(filepath.Separator))
 
-	allowedRoots := []string{"tasks", "uploads", "static"}
-	var localFilePath string
-	for _, root := range allowedRoots {
-		// Support both full paths like "tasks/abc/file.srt" and relative paths like "abc/file.srt".
-		if requestedFile == root || strings.HasPrefix(requestedFile, root+string(filepath.Separator)) {
-			localFilePath = requestedFile
-			break
-		}
-
-		cand := filepath.Clean(filepath.Join(root, requestedFile))
-		// Ensure the cleaned path stays within the allowed root.
-		if strings.HasPrefix(cand, root+string(filepath.Separator)) || cand == root {
-			localFilePath = cand
-			break
-		}
-	}
-
-	if localFilePath == "" {
+	localFilePath, ok := resolveDownloadPath(requestedFile)
+	if !ok {
 		c.JSON(403, response.Response{Error: -1, Msg: "非法路径", Data: nil})
 		return
 	}
 
-	if _, err := os.Stat(localFilePath); os.IsNotExist(err) {
+	fileInfo, err := os.Stat(localFilePath)
+	if os.IsNotExist(err) {
+		c.JSON(404, response.Response{Error: -1, Msg: "文件不存在", Data: nil})
+		return
+	}
+	if err != nil {
+		c.JSON(500, response.Response{Error: -1, Msg: "文件读取失败", Data: nil})
+		return
+	}
+	if fileInfo.IsDir() {
 		c.JSON(404, response.Response{Error: -1, Msg: "文件不存在", Data: nil})
 		return
 	}

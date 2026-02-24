@@ -2,8 +2,8 @@ package api
 
 import (
 	"fmt"
+	"krillin-ai/internal/appdirs"
 	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -53,7 +53,10 @@ func CreateSubtitleTask(task *SubtitleTask) (*TaskStatus, error) {
 	taskId := generateTaskId()
 
 	// 创建任务目录
-	taskDir := filepath.Join("tasks", taskId)
+	taskDir, err := appdirs.ResolveTaskDir(taskId)
+	if err != nil {
+		return nil, fmt.Errorf("解析任务目录失败: %v", err)
+	}
 	if err := createTaskDirectory(taskDir); err != nil {
 		return nil, fmt.Errorf("创建任务目录失败: %v", err)
 	}
@@ -82,17 +85,17 @@ func GetSubtitleTaskStatus(taskId string) (*TaskStatus, error) {
 		status.SubtitleInfo = []SubtitleResult{
 			{
 				Name:        "字幕.srt",
-				DownloadURL: fmt.Sprintf("/tasks/%s/output/subtitle.srt", taskId),
+				DownloadURL: fmt.Sprintf("/api/file/tasks/%s/output/subtitle.srt", taskId),
 			},
 			{
 				Name:        "字幕.ass",
-				DownloadURL: fmt.Sprintf("/tasks/%s/output/subtitle.ass", taskId),
+				DownloadURL: fmt.Sprintf("/api/file/tasks/%s/output/subtitle.ass", taskId),
 			},
 		}
 
 		// 如果启用了配音，添加配音下载链接
 		if status.SpeechDownloadURL == "" {
-			status.SpeechDownloadURL = fmt.Sprintf("/tasks/%s/output/speech.mp3", taskId)
+			status.SpeechDownloadURL = fmt.Sprintf("/api/file/tasks/%s/output/speech.mp3", taskId)
 		}
 	}
 

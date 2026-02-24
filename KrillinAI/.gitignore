@@ -21,4 +21,5 @@ KrillinAI*
 
 # Data
 data/
+!portable/data/
 summary.txt

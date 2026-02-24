@@ -1,0 +1,19 @@
+Implemented T2.2 end-to-end for Windows dependency auto-install.
+
+- Added a dedicated Windows installer with pinned release URLs + SHA256 for `ffmpeg/ffprobe` and `yt-dlp` in `internal/deps/windows_installer.go:23`.
+  - `ffmpeg` package: BtbN release asset `ffmpeg-n7.1.3-40-gcddd06f3b9-win64-gpl-7.1.zip`
+  - `yt-dlp` package: `2026.01.31/yt-dlp.exe`
+  - Includes streaming download, checksum verification, zip extraction, install, and progress callbacks (`InstallProgress`) in `internal/deps/windows_installer.go:49`.
+- Installer now writes binaries to `CacheDir/bin/<tool>/<tool>.exe` and updates `internal/storage` paths via `EnsureManagedDependencyPaths()` / setters in `internal/deps/windows_installer.go:636`.
+- Updated dependency checks to use managed paths and invoke Windows auto-install when missing (`internal/deps/checker.go:17`, `internal/deps/checker.go:91`, `internal/deps/checker.go:173`, `internal/deps/checker.go:258`).
+- Updated resolver inventory to refresh managed storage paths before resolving, so UI status reflects newly installed binaries (`internal/deps/resolver.go:139`).
+- Wired Desktop `Fix/Install` button to run installer async, show install progress dialog, and refresh dependency status afterward in `internal/desktop/ui.go:755` and `internal/desktop/ui.go:872`.
+  - Unsupported deps still show a clear info message.
+
+Tests added (with `httptest`) in `internal/deps/windows_installer_test.go:20`:
+- successful zip download + checksum + extract + path layout for `ffmpeg/ffprobe`
+- successful binary download + checksum + install for `yt-dlp`
+- checksum mismatch failure path
+
+Validation:
+- Ran `go test ./...` successfully.

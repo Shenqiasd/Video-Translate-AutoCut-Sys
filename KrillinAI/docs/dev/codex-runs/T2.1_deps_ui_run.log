@@ -1,0 +1,29 @@
+Implemented T2.1 end-to-end: dependency inventory/resolution model + desktop Settings status panel + resolver unit tests.
+
+- Added a reusable dependency model and resolver in `internal/deps/resolver.go:13`:
+  - `DependencySpec`/`DependencyState` with `tier`, `status`, `resolvedPath`, `hint`, and source (`storage` vs `lookpath`).
+  - Resolution rule is now explicit in `PathResolver.Resolve` (`internal/deps/resolver.go:67`): prefer `internal/storage` path first, then `exec.LookPath`.
+  - Added inventory builder with Must/Should/Optional tiers in `BuildDependencyInventory` (`internal/deps/resolver.go:139`) for:
+    - Must: `ffmpeg`, `ffprobe`, `yt-dlp`
+    - Should (conditional): `edge-tts` when TTS provider is `edge-tts`
+    - Optional: `fasterwhisper`, `whispercpp`, `whisperx`, `whisperkit`
+  - Added `FormatDependencyReport` (`internal/deps/resolver.go:238`) for diagnose-style display.
+
+- Added dependency status panel to Desktop Settings in `internal/desktop/ui.go`:
+  - Settings tab now includes dependency card via `createDependencyStatusGroup` from `CreateConfigTab` (`internal/desktop/ui.go:35` and `internal/desktop/ui.go:64`).
+  - New status UI section (`internal/desktop/ui.go:755`) shows:
+    - Tier grouping (Must/Should/Optional)
+    - Status (OK/Missing/Error), source, resolved path, hint
+    - Placeholder `Fix/Install` button per dependency (`internal/desktop/ui.go:871`) for T2.2 wiring.
+  - Added `Run Diagnose` button (`internal/desktop/ui.go:763`) that executes current binary with `--diagnose` (`internal/desktop/ui.go:910`), with fallback to in-app dependency report if command execution fails.
+  - Added `Refresh Status` button to re-evaluate dependency state without restarting.
+
+- Added resolver unit tests in `internal/deps/resolver_test.go:16`:
+  - Prefers storage path when configured.
+  - Falls back to `LookPath` when storage is empty.
+  - Correctly marks missing vs error.
+  - Handles configured path missing/stat failure.
+  - Verifies edge-tts tier behavior by provider.
+
+Validation run:
+- `go test ./...` ✅ passed.

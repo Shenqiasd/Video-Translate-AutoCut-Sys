@@ -1,0 +1,39 @@
+Implemented T1.4 end-to-end with `appdirs` as the source of truth for task/cache/db paths, plus compatibility handling for old paths.
+
+- Added canonical runtime path helpers in `internal/appdirs/runtime_paths.go`:
+  - `TaskRootFor(paths) => filepath.Join(OutputDir, "tasks")`
+  - `TaskDirFor(paths, taskID)`
+  - `UploadRootFor(paths)`
+  - `DBPathFor(paths) => filepath.Join(CacheDir, "krillin.db")`
+- Updated non-Windows defaults in `internal/appdirs/appdirs.go` to keep compatibility with legacy task layout while enabling canonical derivation:
+  - `OutputDir` now defaults to `"."` (so `TaskRoot` still resolves to `./tasks`).
+- Switched DB location resolution in `internal/storage/db.go` from hardcoded `data/krillin.db` to `appdirs` (`CacheDir/krillin.db`), with directory creation based on resolved path.
+
+- Unified service task/artifact paths:
+  - `internal/service/subtitle_service.go` now resolves task base dir via appdirs-derived task dir.
+  - `internal/service/smart_clipper.go` now uses resolved task dirs and cache temp dir (`CacheDir/temp_analysis/...`).
+  - `internal/service/upload_subtitle.go` now converts filesystem artifact paths to stable API URLs under `/api/file/tasks/...` instead of leaking local absolute paths.
+  - Added shared helpers in `internal/service/paths.go`.
+
+- Unified handler path behavior and allowed roots:
+  - `internal/handler/subtitle_task.go` delete/upload/download now use resolved roots.
+  - Uploads now go to resolved upload root (derived from `OutputDir`), not hardcoded `./uploads`.
+  - Download path allowlist now maps virtual roots (`tasks`, `uploads`, `static`) to resolved real directories with legacy fallback.
+  - Added traversal hardening and root containment checks in `internal/handler/file_paths.go`.
+  - Kept backward compatibility for existing `tasks/...`/`uploads/...` files.
+
+- Updated UI hints:
+  - Desktop hints now show resolved local output path via appdirs in `internal/desktop/subtitle.go`.
+  - Web hint text updated to new canonical location wording in `static/index.html`.
+  - Also updated placeholder API task path usage in `internal/api/subtitle.go` to resolved dirs and `/api/file/tasks/...` URLs.
+
+- Added/updated tests:
+  - `internal/appdirs/runtime_paths_test.go`
+  - `internal/appdirs/appdirs_test.go` (non-Windows default expectation update)
+  - `internal/service/paths_test.go`
+  - `internal/storage/db_test.go`
+  - `internal/handler/subtitle_task_test.go` (now resolver-driven + traversal test)
+
+Validation:
+- Ran `go test ./...`
+- Result: all packages passed.

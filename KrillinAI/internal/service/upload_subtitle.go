@@ -23,10 +23,14 @@ func (s Service) uploadSubtitles(ctx context.Context, stepParam *types.SubtitleT
 			}
 			resultPath = replacedSrcFile
 		}
+		downloadPath, err := resolveTaskDownloadPath(resultPath)
+		if err != nil {
+			return fmt.Errorf("uploadSubtitles resolveTaskDownloadPath err: %w", err)
+		}
 		subtitleInfos = append(subtitleInfos, types.SubtitleInfo{
 			TaskId:      stepParam.TaskId,
 			Name:        info.Name,
-			DownloadUrl: "/api/file/" + resultPath,
+			DownloadUrl: "/api/file/" + downloadPath,
 		})
 	}
 	// 更新字幕任务信息
@@ -36,7 +40,11 @@ func (s Service) uploadSubtitles(ctx context.Context, stepParam *types.SubtitleT
 	taskPtr.ProcessPct = 100
 	// 配音文件
 	if stepParam.TtsResultFilePath != "" {
-		taskPtr.SpeechDownloadUrl = "/api/file/" + stepParam.TtsResultFilePath
+		ttsDownloadPath, err := resolveTaskDownloadPath(stepParam.TtsResultFilePath)
+		if err != nil {
+			return fmt.Errorf("uploadSubtitles resolveTaskDownloadPath for tts err: %w", err)
+		}
+		taskPtr.SpeechDownloadUrl = "/api/file/" + ttsDownloadPath
 	}
 	return nil
 }
