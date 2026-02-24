@@ -13,6 +13,16 @@ builds:
       - arm64
     main: ./cmd/server/main.go
 
+  # Desktop UI binary (Windows is enabled by default via build tags).
+  - id: desktop
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+    main: ./cmd/desktop/main.go
+
 # Docker 构建配置
 dockers:
   - image_templates:
@@ -68,7 +78,7 @@ archives:
 
   # Windows portable distribution: zip containing exe + data/.
   - id: windows-portable-zip
-    builds: [server]
+    builds: [desktop]
     format: zip
     name_template: >-
       {{ .ProjectName }}_
