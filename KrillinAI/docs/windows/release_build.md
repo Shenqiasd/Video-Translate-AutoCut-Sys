@@ -42,16 +42,22 @@ Outputs:
 
 ## CI Release (GitHub Tags)
 
-On GitHub Actions release workflow (`.github/workflows/release.yml`), pushing a tag like `v1.2.3` now does:
+The effective GitHub Actions workflow is at the repository root:
+
+- `/.github/workflows/release.yml`
+
+> Note: `KrillinAI/.github/workflows/release.yml` is kept for module-local reference, but GitHub does not discover workflows from that nested path.
+
+Pushing a tag like `v1.2.3` now does:
 
 - build Windows desktop UI on `windows-latest` (`amd64` only)
 - install MSYS2 in CI using `msys2/setup-msys2@v2` and install `mingw-w64-x86_64-toolchain`
 - add `mingw64\bin` to PATH in PowerShell steps before building, so `gcc` is available for cgo/Fyne
-- run:
+- run in `KrillinAI/` working directory:
   - `scripts/windows_build_desktop.ps1`
   - `scripts/windows_package_portable.ps1`
-- upload `build\KrillinAI_Windows_portable.zip` as a workflow artifact
-- download that zip in the GoReleaser job to `build/`, where `release.extra_files` attaches it to the GitHub Release as a downloadable asset
+- upload `KrillinAI/build/KrillinAI_Windows_portable.zip` as a workflow artifact
+- download that zip in the GoReleaser job to `KrillinAI/build/`, where `release.extra_files` attaches it to the GitHub Release as a downloadable asset
 
 CI constraint notes:
 
