@@ -63,6 +63,7 @@ CI constraint notes:
 
 - Windows portable zip artifact is produced only for `amd64`.
 - CI assumes MSYS2 MINGW64 layout (`<msys2-root>\mingw64\bin`) for gcc toolchain wiring.
+- Docker image publish in the GoReleaser job requires `DOCKER_USERNAME` + `DOCKERHUB_TOKEN` repository secrets; if missing, the workflow still creates the GitHub release but skips Docker publishing.
 
 ## Troubleshooting
 
