@@ -21,16 +21,33 @@ jobs:
         with:
           go-version-file: "go.mod"
 
+      - name: Install MSYS2 + MinGW-w64
+        id: setup-msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+
       - name: Ensure MinGW path
         shell: pwsh
         run: |
-          $mingw = "C:\msys64\mingw64\bin"
-          if (Test-Path $mingw) {
-            Add-Content -Path $env:GITHUB_PATH -Value $mingw
-            Write-Host "Added MinGW path: $mingw"
-          } else {
-            Write-Host "MinGW path not found at $mingw; continuing with existing PATH"
+          $msys2Root = "${{ steps.setup-msys2.outputs.msys2-location }}"
+          if (-not $msys2Root) {
+            $msys2Root = "C:\msys64"
           }
+
+          $mingw = Join-Path $msys2Root "mingw64\bin"
+          if (-not (Test-Path $mingw)) {
+            throw "MinGW path not found at $mingw"
+          }
+
+          Add-Content -Path $env:GITHUB_PATH -Value $mingw
+          $env:PATH = "$mingw;$env:PATH"
+
+          Write-Host "Added MinGW path: $mingw"
+          gcc --version
 
       - name: Build desktop exe
         shell: pwsh

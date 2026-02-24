@@ -8,6 +8,7 @@ This doc describes how to build a **Windows desktop UI** release artifact that a
 - Package a portable layout zip:
   - `KrillinAI.exe`
   - `data/` skeleton (created on first run)
+- Target architecture: `windows/amd64` only (no arm64 portable zip in current release flow)
 
 ## Preconditions (Windows machine)
 
@@ -44,11 +45,18 @@ Outputs:
 On GitHub Actions release workflow (`.github/workflows/release.yml`), pushing a tag like `v1.2.3` now does:
 
 - build Windows desktop UI on `windows-latest` (`amd64` only)
+- install MSYS2 in CI using `msys2/setup-msys2@v2` and install `mingw-w64-x86_64-toolchain`
+- add `mingw64\bin` to PATH in PowerShell steps before building, so `gcc` is available for cgo/Fyne
 - run:
   - `scripts/windows_build_desktop.ps1`
   - `scripts/windows_package_portable.ps1`
 - upload `build\KrillinAI_Windows_portable.zip` as a workflow artifact
 - download that zip in the GoReleaser job to `build/`, where `release.extra_files` attaches it to the GitHub Release as a downloadable asset
+
+CI constraint notes:
+
+- Windows portable zip artifact is produced only for `amd64`.
+- CI assumes MSYS2 MINGW64 layout (`<msys2-root>\mingw64\bin`) for gcc toolchain wiring.
 
 ## Troubleshooting
 
