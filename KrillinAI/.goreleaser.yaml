@@ -13,15 +13,9 @@ builds:
       - arm64
     main: ./cmd/server/main.go
 
-  # Desktop UI binary (Windows is enabled by default via build tags).
-  - id: desktop
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - windows
-    goarch:
-      - amd64
-    main: ./cmd/desktop/main.go
+  # Desktop UI is built on Windows runners via scripts and attached as a portable zip
+  # through release.extra_files. Do not build it in GoReleaser (Linux cross-compile fails
+  # for fyne/go-gl on windows targets).
 
 # Docker 构建配置
 dockers:
@@ -78,7 +72,7 @@ archives:
 
   # Windows portable distribution: zip containing exe + data/.
   - id: windows-portable-zip
-    builds: [desktop]
+    builds: []
     format: zip
     name_template: >-
       {{ .ProjectName }}_
